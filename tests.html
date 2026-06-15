@@ -326,7 +326,7 @@
           assert(d instanceof Date, "Data inválida retornada");
           
           const formatted = formatMatchDate("06/15/2026 12:00", "14");
-          assertEquals(formatted, "15/06/2026 16:00", "Data formatada errada");
+          assertEquals(formatted, "15/06, 16:00", "Data formatada errada");
           
           const time = formatMatchTime("06/15/2026 12:00", "14");
           assertEquals(time, "16:00", "Horário formatado errado");
@@ -339,14 +339,14 @@
           assert(d instanceof Date, "Data inválida");
           
           const formatted = formatMatchDate("06/25/2026 17:00", "11");
-          assertEquals(formatted, "25/06/2026 18:00", "Conversão de fuso incorreta");
+          assertEquals(formatted, "25/06, 18:00", "Conversão de fuso incorreta");
         });
 
         it('Deve converter data do estádio do México (CST/UTC-6) para fuso de Brasília (UTC-3)', () => {
           // Estadio Azteca (stadium_id 1) - 16:00 local time
           // 16:00 CST = 22:00 UTC = 19:00 Brasília time
           const formatted = formatMatchDate("06/29/2026 16:30", "1");
-          assertEquals(formatted, "29/06/2026 19:30", "Conversão de fuso no México incorreta");
+          assertEquals(formatted, "29/06, 19:30", "Conversão de fuso no México incorreta");
         });
       });
 
