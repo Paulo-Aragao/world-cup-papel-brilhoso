@@ -7,15 +7,14 @@ const state = {
   currentUser: null,    // {id, nickname, avatar_seed, champion}
   games: [],            // from API
   groups: [],           // from API
+  teams: [],            // from API
   myGuesses: {},        // matchId -> {home_score, away_score}
   allGuesses: [],       // from Supabase
   allUsers: [],         // from Supabase
   ranking: [],          // computed
-  currentPage: 'dashboard',
+  currentPage: 'ranking',
   currentPhase: 'group',
   currentFilter: 'all',
-  refreshInterval: null,
-  refreshCountdown: 60,
   realtimeChannel: null,
 };
 
@@ -139,16 +138,18 @@ async function bootApp() {
     loadGames(),
     loadGuesses(),
     loadUsers(),
+    loadTeams(),
   ]);
 
   // Subscribe realtime
   setupRealtime();
 
-  // Start refresh loop
-  startRefreshLoop();
+  // Compute ranking and set navbar coins display
+  recomputeRanking();
+  updateNavScore();
 
-  // Navigate to page from hash or default
-  const hash = location.hash.replace('#', '') || 'dashboard';
+  // Navigate to page from hash or default (default is ranking)
+  const hash = location.hash.replace('#', '') || 'ranking';
   navigateTo(hash);
 
   showLoading(false);
@@ -199,6 +200,25 @@ async function loadGroups() {
   }
 }
 
+async function loadTeams() {
+  try {
+    state.teams = await apiGetTeams();
+  } catch (err) {
+    console.error('Failed to load teams:', err);
+  }
+}
+
+function getTeamById(id) {
+  return state.teams.find(t => String(t.id) === String(id));
+}
+
+function updateNavScore() {
+  const myRankEntry = state.ranking.find(r => r.id === state.currentUser?.id);
+  const score = myRankEntry?.total ?? 0;
+  const el = document.getElementById('nav-score-display');
+  if (el) el.textContent = `${score} 🪙`;
+}
+
 function recomputeRanking() {
   state.ranking = calcRanking(state.allUsers, state.allGuesses, state.games);
 }
@@ -209,10 +229,10 @@ function setupRealtime() {
     // Reload all guesses and recompute ranking
     await loadAllGuesses();
     recomputeRanking();
+    updateNavScore();
 
     // If ranking page is open, re-render
     if (state.currentPage === 'ranking') renderRanking();
-    if (state.currentPage === 'dashboard') renderDashboard();
 
     // Toast if another user made a guess
     if (payload.new && payload.new.user_id !== state.currentUser?.id) {
@@ -230,37 +250,47 @@ function setupRealtime() {
   subscribeToUsers(async () => {
     await loadUsers();
     recomputeRanking();
+    updateNavScore();
+    if (state.currentPage === 'ranking') renderRanking();
   });
 }
 
-// ---- REFRESH LOOP ----
-function startRefreshLoop() {
-  state.refreshCountdown = 60;
+// ---- MANUAL REFRESH ----
+async function manualRefreshAll() {
+  invalidateCache();
+  await Promise.all([
+    loadGames(),
+    loadGuesses(),
+    loadAllGuesses(),
+    loadUsers(),
+    loadTeams(),
+  ]);
+  recomputeRanking();
+  updateNavScore();
 
-  state.refreshInterval = setInterval(async () => {
-    state.refreshCountdown--;
-    const el = document.getElementById('refresh-countdown');
-    if (el) el.textContent = state.refreshCountdown;
-
-    if (state.refreshCountdown <= 0) {
-      state.refreshCountdown = 60;
-      invalidateCache();
-      await loadGames();
-      recomputeRanking();
-      // Refresh current page
-      refreshCurrentPage();
-    }
-  }, 1000);
+  // Refresh current view
+  if (state.currentPage === 'ranking') renderRanking();
+  if (state.currentPage === 'palpites') renderPalpites();
+  if (state.currentPage === 'jogos') renderJogos();
+  if (state.currentPage === 'grupos') renderGrupos();
 }
 
-function refreshCurrentPage() {
-  switch (state.currentPage) {
-    case 'dashboard': renderDashboard(); break;
-    case 'jogos':     renderJogos(); break;
-    case 'ranking':   renderRanking(); break;
-    case 'grupos':    renderGrupos(); break;
-    case 'palpites':  renderPalpites(); break;
-  }
+function bindManualRefreshBtn() {
+  const btn = document.getElementById('btn-manual-refresh');
+  if (!btn) return;
+  btn.onclick = async () => {
+    btn.disabled = true;
+    btn.textContent = '⏳ Atualizando...';
+    try {
+      await manualRefreshAll();
+      showToast('🔄 Dados atualizados!', 'success');
+    } catch (err) {
+      showToast('❌ Erro ao atualizar', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔄 ATUALIZAR DADOS';
+    }
+  };
 }
 
 // ---- NAVIGATION ----
@@ -307,8 +337,8 @@ function bindNavEvents() {
 }
 
 async function navigateTo(page) {
-  const validPages = ['dashboard', 'palpites', 'jogos', 'ranking', 'grupos'];
-  if (!validPages.includes(page)) page = 'dashboard';
+  const validPages = ['palpites', 'jogos', 'ranking', 'grupos'];
+  if (!validPages.includes(page)) page = 'ranking';
 
   state.currentPage = page;
   location.hash = page;
@@ -327,95 +357,16 @@ async function navigateTo(page) {
 
   // Render page content
   await renderPage(page);
-}
-
-async function renderPage(page) {
-  switch (page) {
-    case 'dashboard':
-      await loadAllGuesses();
-      recomputeRanking();
-      renderDashboard();
-      break;
-    case 'palpites':
-      renderPalpites();
-      break;
-    case 'jogos':
-      renderJogos();
-      break;
-    case 'ranking':
-      await loadAllGuesses();
-      recomputeRanking();
-      renderRanking();
-      break;
-    case 'grupos':
-      await loadGroups();
-      renderGrupos();
-      break;
-  }
-}
-
-function logout() {
-  localStorage.removeItem('bolaoCopa2026_username');
-  localStorage.removeItem('bolaoCopa2026_nick');
-  if (state.refreshInterval) clearInterval(state.refreshInterval);
-  location.reload();
-}
-
 // ============================================
-// RENDER: DASHBOARD
+// RENDER: CHAMPION CARD
 // ============================================
-function renderDashboard() {
-  renderMyScore();
-  renderNextMatch();
-  renderChampionCard();
-  renderTodayMatches();
-  renderTop5();
-}
-
-function renderMyScore() {
-  const myRankEntry = state.ranking.find(r => r.id === state.currentUser?.id);
-  const score = myRankEntry?.total ?? 0;
-  const exact = myRankEntry?.exact ?? 0;
-  const correct = myRankEntry?.correct ?? 0;
-  const pos = myRankEntry?.position ?? '—';
-
-  document.getElementById('my-score').textContent = score;
-  document.getElementById('my-rank').textContent = pos === '—' ? '— POS. —' : `${pos}ª POSIÇÃO`;
-  const breakdown = document.getElementById('my-breakdown');
-  breakdown.innerHTML = `
-    <span class="score-exact">✅ ${exact} exatos</span>
-    <span class="score-result">🟡 ${correct} parciais</span>
-  `;
-}
-
-function renderNextMatch() {
-  const next = getNextMatch(state.games);
-  const teamsEl = document.getElementById('next-teams');
-  const timeEl = document.getElementById('next-time');
-  const groupEl = document.getElementById('next-group');
-
-  if (!next) {
-    teamsEl.textContent = 'Nenhum jogo pendente';
-    timeEl.textContent = '';
-    groupEl.textContent = '';
-    return;
-  }
-
-  const homeFlag = teamFlag(next.home_team_name_en) || '';
-  const awayFlag = teamFlag(next.away_team_name_en) || '';
-  const homePt = next.home_team_name_en ? teamNamePt(next.home_team_name_en) : (next.home_team_label || '?');
-  const awayPt = next.away_team_name_en ? teamNamePt(next.away_team_name_en) : (next.away_team_label || '?');
-
-  teamsEl.innerHTML = `${homeFlag} ${homePt}<br>x<br>${awayPt} ${awayFlag}`;
-  timeEl.textContent = formatMatchTime(next.local_date);
-  groupEl.textContent = `${countdownToMatch(next.local_date)} · ${phaseLabelPt(next.type)} ${next.group !== 'R32' && next.group !== 'R16' && next.group !== 'QF' && next.group !== 'SF' && next.group !== 'FINAL' && next.group !== '3RD' ? '— Grupo ' + next.group : ''}`;
-}
-
 function renderChampionCard() {
   const user = state.currentUser;
   const selectEl = document.getElementById('champion-select');
   const savedEl = document.getElementById('champion-saved');
   const displayEl = document.getElementById('champion-display');
+
+  if (!selectEl || !savedEl || !displayEl) return;
 
   // Populate select with all teams
   if (selectEl.options.length <= 1) {
@@ -442,66 +393,29 @@ function renderChampionCard() {
 
   // Save champion
   const saveBtn = document.getElementById('btn-save-champion');
-  saveBtn.onclick = async () => {
-    const champion = selectEl.value;
-    if (!champion) return;
-    try {
-      await dbUpdateChampion(user.id, champion);
-      state.currentUser.champion = champion;
-      // Update local users array too
-      const u = state.allUsers.find(u => u.id === user.id);
-      if (u) u.champion = champion;
-      renderChampionCard();
-      showToast(`🏆 Campeão salvo: ${TEAM_NAME_PT[champion]}!`, 'success');
-    } catch (err) {
-      showToast('Erro ao salvar campeão', 'error');
-    }
-  };
+  if (saveBtn) {
+    saveBtn.onclick = async () => {
+      const champion = selectEl.value;
+      if (!champion) return;
+      try {
+        await dbUpdateChampion(user.id, champion);
+        state.currentUser.champion = champion;
+        // Update local users array too
+        const u = state.allUsers.find(u => u.id === user.id);
+        if (u) u.champion = champion;
+        renderChampionCard();
+        showToast(`🏆 Campeão salvo: ${TEAM_NAME_PT[champion]}!`, 'success');
+      } catch (err) {
+        showToast('Erro ao salvar campeão', 'error');
+      }
+    };
+  }
 
   // Click on saved champion allows change
   savedEl.onclick = () => {
     state.currentUser.champion = '';
     renderChampionCard();
   };
-}
-
-function renderTodayMatches() {
-  const container = document.getElementById('today-matches');
-  const todayGames = state.games.filter(isMatchToday);
-
-  if (todayGames.length === 0) {
-    container.innerHTML = `<div class="loading-pixel">Sem jogos hoje 📅</div>`;
-    return;
-  }
-
-  container.innerHTML = todayGames.map(g => renderMatchCard(g)).join('');
-}
-
-function renderTop5() {
-  const container = document.getElementById('top5-ranking');
-  const top5 = state.ranking.slice(0, 5);
-
-  if (top5.length === 0) {
-    container.innerHTML = `<div class="loading-pixel">Ainda sem palpites 🎯</div>`;
-    return;
-  }
-
-  container.innerHTML = top5.map((u, i) => {
-    const posClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
-    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
-    const isMe = u.id === state.currentUser?.id;
-    return `
-      <div class="rank-row ${isMe ? 'me' : ''}">
-        <span class="rank-pos ${posClass}">${medal || (i + 1)}</span>
-        <span class="rank-avatar">${u.avatar_seed || '⚽'}</span>
-        <span class="rank-nick">${escapeHtml(u.nickname)}${isMe ? ' ← você' : ''}</span>
-        <div>
-          <span class="rank-pts">${u.total}</span>
-          <span class="rank-pts-label"> 🪙</span>
-        </div>
-      </div>
-    `;
-  }).join('');
 }
 
 // ============================================
@@ -549,6 +463,7 @@ function renderMatchCard(game) {
 // RENDER: PALPITES
 // ============================================
 function renderPalpites() {
+  renderChampionCard();
   bindPhaseTabEvents();
   renderGuessesForPhase(state.currentPhase);
   bindSaveAllBtn();
@@ -579,13 +494,13 @@ function renderGuessesForPhase(phase) {
     return;
   }
 
-  const open   = games.filter(g => !hasMatchStarted(g)).length;
-  const locked = games.filter(g => hasMatchStarted(g)).length;
+  const open   = games.filter(g => !hasMatchStarted(g) && g.home_team_name_en && g.away_team_name_en).length;
+  const locked = games.filter(g => hasMatchStarted(g) || !g.home_team_name_en || !g.away_team_name_en).length;
 
   const summary = `
     <div class="phase-summary">
       <span class="phase-open">✏️ ${open} abertos para palpite</span>
-      <span class="phase-locked">🔒 ${locked} encerrados</span>
+      <span class="phase-locked">🔒 ${locked} fechados / pendentes</span>
     </div>`;
 
   container.innerHTML = summary + games.map(game => renderGuessRow(game)).join('');
@@ -593,10 +508,8 @@ function renderGuessesForPhase(phase) {
   // Bind input events
   container.querySelectorAll('.guess-score-input').forEach(input => {
     input.addEventListener('change', () => {
-      // Auto-save indicator
       document.getElementById('save-status').textContent = '● Alterações não salvas';
     });
-    // Only digits
     input.addEventListener('input', () => {
       input.value = input.value.replace(/[^0-9]/g, '').slice(0, 2);
     });
@@ -608,16 +521,16 @@ function renderGuessRow(game) {
   const guess    = state.myGuesses[matchId];
   const locked   = hasMatchStarted(game);
   const finished = isMatchFinished(game);
+  const isDefined = !!(game.home_team_name_en && game.away_team_name_en);
 
-  const homeFlag = teamFlag(game.home_team_name_en) || '';
-  const awayFlag = teamFlag(game.away_team_name_en) || '';
-  const homePt   = game.home_team_name_en ? teamNamePt(game.home_team_name_en) : (game.home_team_label || 'Time 1');
-  const awayPt   = game.away_team_name_en ? teamNamePt(game.away_team_name_en) : (game.away_team_label || 'Time 2');
+  const homeFlag = isDefined ? (teamFlag(game.home_team_name_en) || '') : '🏳️';
+  const awayFlag = isDefined ? (teamFlag(game.away_team_name_en) || '') : '🏳️';
+  const homePt   = game.home_team_name_en ? teamNamePt(game.home_team_name_en) : (game.home_team_label || 'Time A');
+  const awayPt   = game.away_team_name_en ? teamNamePt(game.away_team_name_en) : (game.away_team_label || 'Time B');
 
   const guessHome = guess?.home_score ?? '';
   const guessAway = guess?.away_score ?? '';
 
-  // Compute result feedback
   let resultBadge = '';
   let pointsInfo  = '';
   let rowExtra    = '';
@@ -628,19 +541,16 @@ function renderGuessRow(game) {
     const realA = game.away_score;
 
     if (guess?.home_score != null && guess?.away_score != null) {
-      // User had a guess — show result
       const { result, points } = calcGuessResult(guess, game);
       rowClass += ` ${resultClass(result)}`;
       resultBadge = `<span class="guess-result-badge">${resultEmoji(result)}</span>`;
       pointsInfo  = `<span class="guess-pts-badge pts-${outcomeClass(result)}">+${points} 🪙</span>`;
     } else {
-      // No guess registered — missed this one
       rowClass += ' result-wrong';
       resultBadge = `<span class="guess-result-badge">😶</span>`;
       pointsInfo  = `<span class="guess-pts-badge pts-wrong">+0 🪙</span>`;
     }
 
-    // Show real score prominently below
     rowExtra = `
       <div class="real-score-row">
         <span class="real-score-label">PLACAR REAL:</span>
@@ -650,16 +560,12 @@ function renderGuessRow(game) {
   }
 
   if (locked) rowClass += ' locked';
+  if (!isDefined) rowClass += ' locked undefined-match';
 
-  // Guess input area — show actual input or the user's locked guess
-  const inputsOrGuess = locked
+  const showInputs = !locked && isDefined;
+
+  const inputsOrGuess = showInputs
     ? `
-      <div class="guess-locked-score">
-        <span class="guess-locked-num">${guessHome !== '' ? guessHome : '?'}</span>
-        <span class="guess-vs">×</span>
-        <span class="guess-locked-num">${guessAway !== '' ? guessAway : '?'}</span>
-      </div>`
-    : `
       <input type="number" class="guess-score-input"
              min="0" max="99" value="${guessHome}"
              data-match="${matchId}" data-side="home"
@@ -668,7 +574,27 @@ function renderGuessRow(game) {
       <input type="number" class="guess-score-input"
              min="0" max="99" value="${guessAway}"
              data-match="${matchId}" data-side="away"
-             placeholder="?" />`;
+             placeholder="?" />`
+    : !isDefined
+      ? `
+      <div class="guess-locked-score" title="Aguardando definição dos confrontos">
+        <span class="guess-locked-num">—</span>
+        <span class="guess-vs">×</span>
+        <span class="guess-locked-num">—</span>
+      </div>`
+      : `
+      <div class="guess-locked-score">
+        <span class="guess-locked-num">${guessHome !== '' ? guessHome : '?'}</span>
+        <span class="guess-vs">×</span>
+        <span class="guess-locked-num">${guessAway !== '' ? guessAway : '?'}</span>
+      </div>`;
+
+  if (!isDefined) {
+    rowExtra = `
+      <div class="real-score-row" style="border-top:none; padding-top:0;">
+        <span class="real-score-label" style="color:var(--accent-blue)">🔒 CONFRONTOS INDEFINIDOS</span>
+      </div>`;
+  }
 
   const matchInfo = `${game.type === 'group' ? 'Grupo ' + game.group + ' · ' : phaseLabelPt(game.type) + ' · '}${formatMatchDate(game.local_date)}`;
 
@@ -698,6 +624,7 @@ function renderGuessRow(game) {
 
 function bindSaveAllBtn() {
   const btn = document.getElementById('btn-save-all');
+  if (!btn) return;
   btn.onclick = async () => {
     btn.disabled = true;
     btn.textContent = '⏳ Salvando...';
@@ -713,7 +640,6 @@ function bindSaveAllBtn() {
         const awayInput = row.querySelector('[data-side="away"]');
 
         if (!homeInput || !awayInput) return;
-        // locked match is handled by not having inputs in the new DOM structure if locked
 
         const homeVal = homeInput.value;
         const awayVal = awayInput.value;
@@ -724,7 +650,6 @@ function bindSaveAllBtn() {
             home_score: parseInt(homeVal),
             away_score: parseInt(awayVal),
           });
-          // Update local state
           state.myGuesses[matchId] = { match_id: matchId, home_score: parseInt(homeVal), away_score: parseInt(awayVal) };
         }
       });
@@ -738,7 +663,6 @@ function bindSaveAllBtn() {
       showToast(`✅ ${toSave.length} palpites salvos!`, 'success');
       document.getElementById('save-status').textContent = `✅ Salvo às ${new Date().toLocaleTimeString('pt-BR')}`;
 
-      // Re-render to show results
       renderGuessesForPhase(state.currentPhase);
     } catch (err) {
       showToast('❌ Erro ao salvar: ' + err.message, 'error');
@@ -755,7 +679,6 @@ function bindSaveAllBtn() {
 function renderJogos() {
   bindFilterEvents();
   applyFilter(state.currentFilter);
-  startCountdownDisplay();
 }
 
 function bindFilterEvents() {
@@ -787,7 +710,6 @@ function renderJogosContainer(games) {
     return;
   }
 
-  // Group by date
   const grouped = groupGamesByDate(games);
   let html = '';
 
@@ -797,10 +719,6 @@ function renderJogosContainer(games) {
   });
 
   container.innerHTML = html;
-}
-
-function startCountdownDisplay() {
-  // Already handled by the main refresh loop
 }
 
 // ============================================
@@ -827,7 +745,7 @@ function renderRanking() {
           <div class="rank-detail-nick">${escapeHtml(u.nickname)}${isMe ? ' <span style="color:var(--accent-gold)">← você</span>' : ''}</div>
           <div class="rank-detail-stats">
             <span class="stat-exact">✅ ${u.exact} exatos</span>
-            <span class="stat-correct">🟡 ${u.correct} certos</span>
+            <span class="stat-correct">🟡 ${u.correct} parciais</span>
             <span class="stat-wrong">❌ ${u.wrong} errados</span>
             <span style="color:var(--text-muted)">⏳ ${u.pending} pendentes</span>
           </div>
@@ -860,17 +778,16 @@ async function renderGrupos() {
     return;
   }
 
-  // The API returns groups with teams array
   container.innerHTML = groups.map(group => renderGroupCard(group)).join('');
 }
 
 function renderGroupCard(group) {
-  // group structure from API: { group: "A", teams: [{...}, ...] }
   const groupName = group.group || group.name || '?';
   const teams = group.teams || [];
 
   const teamsHtml = teams.map((team, idx) => {
-    const nameEn = team.name_en || team.name || '';
+    const apiTeam = getTeamById(team.team_id);
+    const nameEn = apiTeam ? apiTeam.name_en : '';
     const namePt = teamNamePt(nameEn);
     const flag = teamFlag(nameEn);
     const pts = team.points ?? team.pts ?? 0;
@@ -881,7 +798,7 @@ function renderGroupCard(group) {
     const gf = team.goals_for ?? team.gf ?? 0;
     const ga = team.goals_against ?? team.ga ?? 0;
     const gd = (gf - ga >= 0 ? '+' : '') + (gf - ga);
-    const isQualified = idx < 2; // top 2 qualify (simplified)
+    const isQualified = idx < 2;
 
     return `
       <tr class="${isQualified ? 'qualifier' : ''}">
@@ -925,6 +842,7 @@ function renderGroupCard(group) {
 // ============================================
 function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
+  if (!container) return;
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   toast.textContent = message;
@@ -941,6 +859,7 @@ function showToast(message, type = 'info') {
 // ============================================
 function showLoading(show) {
   const overlay = document.getElementById('loading-overlay');
+  if (!overlay) return;
   if (show) overlay.classList.remove('hidden');
   else overlay.classList.add('hidden');
 }

@@ -55,8 +55,8 @@
         <span class="nav-title pixel-font">COPA 2026</span>
       </div>
       <div class="nav-links" id="nav-links">
-        <a href="#dashboard" class="nav-link" data-page="dashboard" id="nav-dashboard">
-          <span class="nav-icon">🏠</span><span class="nav-text">INÍCIO</span>
+        <a href="#ranking" class="nav-link" data-page="ranking" id="nav-ranking">
+          <span class="nav-icon">🏅</span><span class="nav-text">INÍCIO</span>
         </a>
         <a href="#palpites" class="nav-link" data-page="palpites" id="nav-palpites">
           <span class="nav-icon">✏️</span><span class="nav-text">PALPITES</span>
@@ -64,16 +64,16 @@
         <a href="#jogos" class="nav-link" data-page="jogos" id="nav-jogos">
           <span class="nav-icon">⚡</span><span class="nav-text">JOGOS</span>
         </a>
-        <a href="#ranking" class="nav-link" data-page="ranking" id="nav-ranking">
-          <span class="nav-icon">🏅</span><span class="nav-text">RANKING</span>
-        </a>
         <a href="#grupos" class="nav-link" data-page="grupos" id="nav-grupos">
           <span class="nav-icon">📊</span><span class="nav-text">GRUPOS</span>
         </a>
       </div>
       <div class="nav-user">
         <span class="user-avatar" id="nav-avatar"></span>
-        <span class="pixel-font nav-nick" id="nav-nick-display">---</span>
+        <div class="nav-user-info">
+          <span class="pixel-font nav-nick" id="nav-nick-display">---</span>
+          <span class="pixel-font-sm nav-score" id="nav-score-display">0 🪙</span>
+        </div>
         <button id="btn-logout" class="btn-logout" title="Sair">✕</button>
       </div>
       <button id="nav-hamburger" class="nav-hamburger" aria-label="Menu">☰</button>
@@ -82,81 +82,36 @@
     <!-- MOBILE MENU OVERLAY -->
     <div id="mobile-menu" class="mobile-menu hidden">
       <button id="mobile-close" class="mobile-close">✕</button>
-      <a href="#dashboard" class="mobile-nav-link" data-page="dashboard">🏠 INÍCIO</a>
+      <a href="#ranking" class="mobile-nav-link" data-page="ranking">🏅 INÍCIO</a>
       <a href="#palpites" class="mobile-nav-link" data-page="palpites">✏️ PALPITES</a>
-      <a href="#jogos" class="mobile-nav-link" data-page="jogos">⚡ JOGOS AO VIVO</a>
-      <a href="#ranking" class="mobile-nav-link" data-page="ranking">🏅 RANKING</a>
+      <a href="#jogos" class="mobile-nav-link" data-page="jogos">⚡ JOGOS</a>
       <a href="#grupos" class="mobile-nav-link" data-page="grupos">📊 GRUPOS</a>
     </div>
 
     <!-- PAGES CONTAINER -->
     <main id="pages">
 
-      <!-- ===== PAGE: DASHBOARD ===== -->
-      <div id="page-dashboard" class="page">
-        <div class="page-header">
-          <h2 class="page-title pixel-font">DASHBOARD</h2>
-          <div class="live-indicator" id="live-indicator">
-            <span class="live-dot"></span> AO VIVO
-          </div>
-        </div>
-
-        <!-- My Score Card -->
-        <div class="dash-grid">
-          <div class="card card-score pixel-card">
-            <div class="card-label pixel-font-sm">MINHAS MOEDAS 🪙</div>
-            <div class="score-big" id="my-score">0</div>
-            <div class="score-rank" id="my-rank">— POS. —</div>
-            <div class="score-breakdown" id="my-breakdown">
-              <span class="score-exact">0 exatos</span>
-              <span class="score-result">0 resultados</span>
-            </div>
-          </div>
-
-          <!-- Next Game Card -->
-          <div class="card card-next pixel-card">
-            <div class="card-label pixel-font-sm">PRÓXIMO JOGO</div>
-            <div id="next-match-info">
-              <div class="next-match-teams" id="next-teams">Carregando...</div>
-              <div class="next-match-time" id="next-time">--:--</div>
-              <div class="next-match-group" id="next-group">Grupo --</div>
-            </div>
-          </div>
-
-          <!-- Champion Guess Card -->
-          <div class="card card-champion pixel-card">
-            <div class="card-label pixel-font-sm">MEU CAMPEÃO 🏆</div>
-            <div class="champion-display" id="champion-display">
-              <select id="champion-select" class="pixel-select">
-                <option value="">Escolha o campeão...</option>
-              </select>
-              <button id="btn-save-champion" class="pixel-btn btn-small btn-gold">SALVAR</button>
-            </div>
-            <div class="champion-saved hidden" id="champion-saved">
-              <span id="champion-flag"></span>
-              <span id="champion-name" class="pixel-font-sm">---</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Today's Matches -->
-        <div class="section-title pixel-font">📅 JOGOS DE HOJE</div>
-        <div id="today-matches" class="matches-list">
-          <div class="loading-pixel">Carregando jogos...</div>
-        </div>
-
-        <!-- Top 5 Ranking -->
-        <div class="section-title pixel-font">🏅 TOP 5</div>
-        <div id="top5-ranking" class="top5-list">
-          <div class="loading-pixel">Calculando ranking...</div>
-        </div>
-      </div>
-
       <!-- ===== PAGE: PALPITES ===== -->
       <div id="page-palpites" class="page">
         <div class="page-header">
           <h2 class="page-title pixel-font">PALPITES</h2>
           <div class="save-status" id="save-status"></div>
+        </div>
+
+        <!-- Champion Guess Card (Moved here) -->
+        <div class="card card-champion pixel-card" style="margin-bottom: 1.5rem;">
+          <div class="card-label pixel-font-sm">MEU CAMPEÃO DA COPA 🏆</div>
+          <div class="champion-display" id="champion-display">
+            <select id="champion-select" class="pixel-select">
+              <option value="">Escolha o campeão...</option>
+            </select>
+            <button id="btn-save-champion" class="pixel-btn btn-small btn-gold">SALVAR</button>
+          </div>
+          <div class="champion-saved hidden" id="champion-saved" style="cursor: pointer;">
+            <span id="champion-flag"></span>
+            <span id="champion-name" class="pixel-font-sm">---</span>
+            <span style="font-size: 0.5rem; color: var(--text-dim); margin-left: 0.5rem;">(Clique para mudar)</span>
+          </div>
         </div>
 
         <!-- Phase Tabs -->
@@ -186,7 +141,9 @@
       <div id="page-jogos" class="page">
         <div class="page-header">
           <h2 class="page-title pixel-font">JOGOS</h2>
-          <div class="refresh-info" id="refresh-info">🔄 Atualiza em <span id="refresh-countdown">60</span>s</div>
+          <div class="refresh-info" id="refresh-info">
+            <button id="btn-manual-refresh" class="pixel-btn btn-small btn-blue" style="margin-top:0;">🔄 ATUALIZAR DADOS</button>
+          </div>
         </div>
 
         <!-- Filters -->

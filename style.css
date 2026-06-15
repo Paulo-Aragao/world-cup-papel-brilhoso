@@ -369,6 +369,13 @@ body {
   flex-shrink: 0;
 }
 
+.nav-user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
 .user-avatar {
   width: 32px;
   height: 32px;
@@ -387,6 +394,11 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.nav-score {
+  font-size: 0.45rem;
+  color: var(--accent-gold);
 }
 
 .btn-logout {
