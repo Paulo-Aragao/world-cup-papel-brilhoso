@@ -16,6 +16,10 @@ const state = {
   currentPhase: 'group',
   currentFilter: 'all',
   realtimeChannel: null,
+  selectedResultMatchId: null,
+  resultadosSearchQuery: '',
+  resultadosFilter: 'all',
+  resultadosSort: 'points',
 };
 
 // ---- INIT ----
@@ -274,6 +278,7 @@ async function manualRefreshAll() {
   if (state.currentPage === 'ranking') renderRanking();
   if (state.currentPage === 'palpites') renderPalpites();
   if (state.currentPage === 'jogos') renderJogos();
+  if (state.currentPage === 'resultados') renderResultados();
   if (state.currentPage === 'grupos') renderGrupos();
 }
 
@@ -357,7 +362,7 @@ function bindNavEvents() {
 }
 
 async function navigateTo(page) {
-  const validPages = ['palpites', 'jogos', 'ranking', 'grupos'];
+  const validPages = ['palpites', 'jogos', 'ranking', 'grupos', 'resultados'];
   if (!validPages.includes(page)) page = 'ranking';
 
   state.currentPage = page;
@@ -393,6 +398,15 @@ async function renderPage(page) {
     case 'jogos':
       renderJogos();
       bindManualRefreshBtn();
+      break;
+    case 'resultados':
+      showLoading(true);
+      await Promise.all([loadAllGuesses(), loadUsers(), loadGames()]);
+      recomputeRanking();
+      updateNavScore();
+      renderResultados();
+      bindManualRefreshBtnResultados();
+      showLoading(false);
       break;
     case 'grupos':
       await loadGroups();
@@ -1162,6 +1176,422 @@ function renderRanking() {
           <div class="rank-pts-label">moedas 🪙</div>
         </div>
       </div>
+    `;
+  }).join('');
+}
+
+// ============================================
+// BIND & RENDER: RESULTADOS (ABA DEDICADA)
+// ============================================
+function bindManualRefreshBtnResultados() {
+  const btn = document.getElementById('btn-manual-refresh-resultados');
+  if (!btn) return;
+  btn.onclick = async () => {
+    btn.disabled = true;
+    btn.textContent = '⏳ Atualizando...';
+    try {
+      await manualRefreshAll();
+      showToast('🔄 Dados atualizados!', 'success');
+    } catch (err) {
+      showToast('❌ Erro ao atualizar', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔄 ATUALIZAR DADOS';
+    }
+  };
+}
+
+function getPlayerEmoji(nickname) {
+  const emojis = ['⚽', '🏆', '🎮', '👾', '🌟', '⚡', '🔥', '👑', '🎯', '👽', '💀', '🤖'];
+  if (!nickname) return '👤';
+  let hash = 0;
+  for (let i = 0; i < nickname.length; i++) {
+    hash = nickname.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % emojis.length;
+  return emojis[index];
+}
+
+function renderResultados() {
+  const matchesListEl = document.getElementById('resultados-matches-list');
+  if (!matchesListEl) return;
+
+  // Filtrar partidas iniciadas ou concluídas
+  const startedMatches = state.games.filter(g => hasMatchStarted(g) && g.home_team_name_en && g.away_team_name_en);
+
+  // Ordenar por ID de jogo decrescente (mais recentes primeiro)
+  startedMatches.sort((a, b) => parseInt(b.id) - parseInt(a.id));
+
+  if (startedMatches.length === 0) {
+    matchesListEl.innerHTML = `<div style="text-align:center; padding:1.5rem; font-family:var(--font-pixel); font-size:0.55rem; color:var(--text-dim); line-height: 1.6;">Nenhuma partida iniciada ou encerrada até o momento. As apostas serão reveladas aqui assim que os jogos começarem!</div>`;
+    const detailEl = document.getElementById('resultados-detail-card');
+    if (detailEl) {
+      detailEl.className = 'card pixel-card resultados-detail-card empty';
+      detailEl.innerHTML = `<div class="resultados-empty-msg pixel-font-sm">◀ NENHUMA PARTIDA INICIADA AINDA PARA VER OS PALPITES</div>`;
+    }
+    return;
+  }
+
+  // Definir jogo inicialmente selecionado se for nulo ou inválido
+  if (!state.selectedResultMatchId || !startedMatches.some(g => String(g.id) === String(state.selectedResultMatchId))) {
+    state.selectedResultMatchId = startedMatches[0].id;
+  }
+
+  // Renderizar itens da lista lateral
+  matchesListEl.innerHTML = '';
+  startedMatches.forEach(game => {
+    const isSelected = String(state.selectedResultMatchId) === String(game.id);
+    const homePt = teamNamePt(game.home_team_name_en);
+    const awayPt = teamNamePt(game.away_team_name_en);
+    const homeFlag = teamFlag(game.home_team_name_en);
+    const awayFlag = teamFlag(game.away_team_name_en);
+
+    let scoreDisplay = `${game.home_score} - ${game.away_score}`;
+    let statusLabel = 'FIM';
+    let statusStyle = '';
+
+    if (isMatchLive(game)) {
+      statusLabel = '⚡ AO VIVO';
+      statusStyle = 'color: var(--accent-red);';
+    } else if (!isMatchFinished(game)) {
+      statusLabel = 'ANDAMENTO';
+      statusStyle = 'color: var(--accent-blue);';
+    }
+
+    const item = document.createElement('div');
+    item.className = `resultados-match-item ${isSelected ? 'active' : ''}`;
+    item.dataset.id = game.id;
+    item.innerHTML = `
+      <div class="resultados-match-item-teams">
+        <span>${homeFlag} ${escapeHtml(homePt)}</span>
+        <span>vs</span>
+        <span>${escapeHtml(awayPt)} ${awayFlag}</span>
+      </div>
+      <div class="resultados-match-item-info">
+        <span class="pixel-font-sm" style="font-size:0.4rem; ${statusStyle}">${statusLabel}</span>
+        <span class="pixel-font-sm" style="font-size:0.4rem; font-weight: bold;">${scoreDisplay}</span>
+        <span class="pixel-font-sm" style="font-size:0.4rem; color: var(--text-muted);">#${game.id} (${phaseLabelPt(game.type)})</span>
+      </div>
+    `;
+
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.resultados-match-item').forEach(el => el.classList.remove('active'));
+      item.classList.add('active');
+      state.selectedResultMatchId = game.id;
+      renderResultadosDetail(game.id);
+    });
+
+    matchesListEl.appendChild(item);
+  });
+
+  // Renderizar painel de detalhes do jogo selecionado
+  renderResultadosDetail(state.selectedResultMatchId);
+}
+
+function renderResultadosDetail(matchId) {
+  const detailEl = document.getElementById('resultados-detail-card');
+  if (!detailEl) return;
+
+  const game = state.games.find(g => String(g.id) === String(matchId));
+  if (!game) {
+    detailEl.className = 'card pixel-card resultados-detail-card empty';
+    detailEl.innerHTML = `<div class="resultados-empty-msg pixel-font-sm">◀ SELECIONE UM JOGO VALIDO PARA VER OS PALPITES E ESTATÍSTICAS</div>`;
+    return;
+  }
+
+  detailEl.className = 'card pixel-card resultados-detail-card';
+
+  const homePt = teamNamePt(game.home_team_name_en);
+  const awayPt = teamNamePt(game.away_team_name_en);
+  const homeFlag = teamFlag(game.home_team_name_en);
+  const awayFlag = teamFlag(game.away_team_name_en);
+
+  // Filtrar palpites dos participantes
+  const matchGuesses = state.allGuesses.filter(g => parseInt(g.match_id) === parseInt(matchId));
+  const totalGuessesCount = matchGuesses.length;
+
+  // Estatísticas de palpites
+  let homeWins = 0, draws = 0, awayWins = 0;
+  let totalHomeGoals = 0, totalAwayGoals = 0;
+  const scoreFreqs = {};
+
+  matchGuesses.forEach(g => {
+    if (g.home_score != null && g.away_score != null) {
+      const h = parseInt(g.home_score);
+      const a = parseInt(g.away_score);
+      if (h > a) homeWins++;
+      else if (h === a) draws++;
+      else awayWins++;
+
+      totalHomeGoals += h;
+      totalAwayGoals += a;
+
+      const key = `${h} × ${a}`;
+      scoreFreqs[key] = (scoreFreqs[key] || 0) + 1;
+    }
+  });
+
+  const totalGuessesWithScore = homeWins + draws + awayWins;
+  const homePct = totalGuessesWithScore > 0 ? Math.round((homeWins / totalGuessesWithScore) * 100) : 0;
+  const drawPct = totalGuessesWithScore > 0 ? Math.round((draws / totalGuessesWithScore) * 100) : 0;
+  const awayPct = totalGuessesWithScore > 0 ? 100 - homePct - drawPct : 0;
+
+  const avgHomeGoals = totalGuessesWithScore > 0 ? (totalHomeGoals / totalGuessesWithScore).toFixed(1) : '0.0';
+  const avgAwayGoals = totalGuessesWithScore > 0 ? (totalAwayGoals / totalGuessesWithScore).toFixed(1) : '0.0';
+
+  let mostFrequentScore = 'Nenhum';
+  let maxFreq = 0;
+  Object.entries(scoreFreqs).forEach(([score, freq]) => {
+    if (freq > maxFreq) {
+      maxFreq = freq;
+      mostFrequentScore = score;
+    }
+  });
+
+  let scoreDisplayHtml = '';
+  if (isMatchFinished(game) || isMatchLive(game)) {
+    scoreDisplayHtml = `
+      <span class="score-display">${game.home_score}</span>
+      <span class="resultados-detail-score-hyphen">:</span>
+      <span class="score-display">${game.away_score}</span>
+    `;
+  } else {
+    scoreDisplayHtml = `
+      <span class="score-display">-</span>
+      <span class="resultados-detail-score-hyphen">:</span>
+      <span class="score-display">-</span>
+    `;
+  }
+
+  let statusText = 'ANDAMENTO';
+  if (isMatchLive(game)) {
+    statusText = '⚡ AO VIVO';
+  } else if (isMatchFinished(game)) {
+    statusText = 'ENCERRADO';
+  }
+
+  const matchInfoText = `${game.type === 'group' ? 'Grupo ' + game.group : phaseLabelPt(game.type)} · ${formatMatchDate(game.local_date, game.stadium_id)}`;
+
+  detailEl.innerHTML = `
+    <div class="resultados-detail-header">
+      <span class="resultados-detail-phase-tag pixel-font-sm">${matchInfoText}</span>
+      <span class="pixel-font-sm" style="float: right; color: ${isMatchLive(game) ? 'var(--accent-red)' : 'var(--text-dim)'}">${statusText}</span>
+    </div>
+
+    <div class="resultados-detail-teams">
+      <div class="resultados-detail-team">
+        <span class="team-flag">${homeFlag}</span>
+        <span class="team-name">${escapeHtml(homePt)}</span>
+      </div>
+      <div class="resultados-detail-score">
+        ${scoreDisplayHtml}
+      </div>
+      <div class="resultados-detail-team">
+        <span class="team-flag">${awayFlag}</span>
+        <span class="team-name">${escapeHtml(awayPt)}</span>
+      </div>
+    </div>
+
+    <!-- ESTATÍSTICAS -->
+    <div class="resultados-stats-section">
+      <div class="card-label pixel-font-sm" style="color: var(--accent-gold); margin-bottom: 0.5rem;">📊 ESTATÍSTICAS DOS PALPITES</div>
+      
+      <div class="resultados-bar-chart-container">
+        <div class="resultados-bar-chart-labels">
+          <span>${homePt} (${homePct}%)</span>
+          <span>Empate (${drawPct}%)</span>
+          <span>${awayPt} (${awayPct}%)</span>
+        </div>
+        <div class="resultados-bar-chart">
+          <div class="resultados-bar-segment home" style="width: ${homePct}%" title="${homeWins} palpites de vitória do ${homePt}"></div>
+          <div class="resultados-bar-segment draw" style="width: ${drawPct}%" title="${draws} palpites de empate"></div>
+          <div class="resultados-bar-segment away" style="width: ${awayPct}%" title="${awayWins} palpites de vitória do ${awayPt}"></div>
+        </div>
+      </div>
+      
+      <div class="resultados-stats-grid">
+        <div class="resultados-stat-box">
+          <span class="resultados-stat-label">Total de Palpites</span>
+          <span class="resultados-stat-value">${totalGuessesCount} 👥</span>
+        </div>
+        <div class="resultados-stat-box">
+          <span class="resultados-stat-label">Média de Gols</span>
+          <span class="resultados-stat-value">${avgHomeGoals} × ${avgAwayGoals} ⚽</span>
+        </div>
+        <div class="resultados-stat-box">
+          <span class="resultados-stat-label">Placar mais Frequente</span>
+          <span class="resultados-stat-value" style="color: var(--accent-gold)">${mostFrequentScore} ${maxFreq > 0 ? `(${maxFreq}×)` : ''}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOOLBAR DE BUSCA E FILTROS -->
+    <div class="resultados-toolbar">
+      <div class="resultados-search-box">
+        <span class="resultados-search-icon">🔍</span>
+        <input type="text" id="resultados-search" class="resultados-search-input" placeholder="Buscar participante..." value="${escapeHtml(state.resultadosSearchQuery)}" />
+      </div>
+
+      <div class="resultados-filters">
+        <button class="resultados-filter-btn ${state.resultadosFilter === 'all' ? 'active' : ''}" data-filter="all">TODOS</button>
+        <button class="resultados-filter-btn ${state.resultadosFilter === 'exact' ? 'active' : ''}" data-filter="exact">EXATOS</button>
+        <button class="resultados-filter-btn ${state.resultadosFilter === 'partial' ? 'active' : ''}" data-filter="partial">PONTUARAM</button>
+        <button class="resultados-filter-btn ${state.resultadosFilter === 'wrong' ? 'active' : ''}" data-filter="wrong">ZERARAM</button>
+      </div>
+
+      <div class="resultados-sort-container">
+        <span class="resultados-sort-label">ORDENAR POR:</span>
+        <select id="resultados-sort" class="resultados-sort-select">
+          <option value="points" ${state.resultadosSort === 'points' ? 'selected' : ''}>PONTOS</option>
+          <option value="name" ${state.resultadosSort === 'name' ? 'selected' : ''}>NOME</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- TABELA DE PALPITES DOS PARTICIPANTES -->
+    <div class="match-guesses-list" style="margin-top:0.5rem;">
+      <table class="match-guesses-table">
+        <thead>
+          <tr>
+            <th style="text-align:left; width: 45%;">Participante</th>
+            <th style="text-align:center; width: 30%;">Palpite</th>
+            <th style="text-align:right; width: 25%;">Pontos</th>
+          </tr>
+        </thead>
+        <tbody id="resultados-guesses-rows">
+          <!-- Dinâmico -->
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  // Bind Listeners
+  const searchInput = document.getElementById('resultados-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      state.resultadosSearchQuery = e.target.value;
+      renderResultadosGuessesRows(game, matchGuesses);
+    });
+  }
+
+  const sortSelect = document.getElementById('resultados-sort');
+  if (sortSelect) {
+    sortSelect.addEventListener('change', (e) => {
+      state.resultadosSort = e.target.value;
+      renderResultadosGuessesRows(game, matchGuesses);
+    });
+  }
+
+  document.querySelectorAll('.resultados-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.resultados-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.resultadosFilter = btn.dataset.filter;
+      renderResultadosGuessesRows(game, matchGuesses);
+    });
+  });
+
+  // Renderizar linhas iniciais
+  renderResultadosGuessesRows(game, matchGuesses);
+}
+
+function renderResultadosGuessesRows(game, matchGuesses) {
+  const tbody = document.getElementById('resultados-guesses-rows');
+  if (!tbody) return;
+
+  const users = [...state.allUsers];
+
+  let rowsData = users.map(user => {
+    const guess = matchGuesses.find(g => g.user_id === user.id);
+    const hasGuessed = guess && guess.home_score != null && guess.away_score != null;
+
+    let guessVal = '—';
+    let points = 0;
+    let pointsHtml = '';
+    let outcome = 'wrong';
+
+    if (hasGuessed) {
+      guessVal = `${guess.home_score} × ${guess.away_score}`;
+      if (isMatchFinished(game) || isMatchLive(game)) {
+        const { result, points: pts } = calcGuessResult(guess, game);
+        points = pts;
+        outcome = outcomeClass(result);
+        pointsHtml = `<span class="guess-pts-badge pts-${outcome}">+${points} 🪙</span>`;
+      } else {
+        pointsHtml = `<span class="guess-pts-badge" style="background:var(--bg-card2); color:var(--accent-blue); border:1px solid var(--accent-blue); padding:0.15rem 0.35rem; font-size:0.45rem;">AGUARDANDO</span>`;
+      }
+    } else {
+      pointsHtml = `<span class="guess-pts-badge pts-wrong">+0 🪙</span>`;
+    }
+
+    return {
+      user,
+      guessVal,
+      points,
+      outcome,
+      hasGuessed,
+      nickname: user.nickname
+    };
+  });
+
+  // Filtro de busca
+  const query = state.resultadosSearchQuery.trim().toLowerCase();
+  if (query) {
+    rowsData = rowsData.filter(d => d.nickname.toLowerCase().includes(query));
+  }
+
+  // Filtros rápidos
+  if (state.resultadosFilter === 'exact') {
+    rowsData = rowsData.filter(d => d.outcome === 'exact');
+  } else if (state.resultadosFilter === 'partial') {
+    rowsData = rowsData.filter(d => d.points > 0);
+  } else if (state.resultadosFilter === 'wrong') {
+    rowsData = rowsData.filter(d => d.points === 0);
+  }
+
+  // Ordenação
+  rowsData.sort((a, b) => {
+    if (state.resultadosSort === 'points') {
+      if (b.points !== a.points) {
+        return b.points - a.points; // Mais pontos primeiro
+      }
+      return a.nickname.localeCompare(b.nickname); // Desempate A-Z
+    } else {
+      return a.nickname.localeCompare(b.nickname); // A-Z
+    }
+  });
+
+  if (rowsData.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="3" style="text-align:center; padding:1.5rem; font-family:var(--font-pixel); font-size:0.5rem; color:var(--text-dim)">
+          Nenhum palpite corresponde aos filtros.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = rowsData.map(d => {
+    const isMe = d.user.id === state.currentUser?.id;
+    const nameLabel = isMe ? `<span style="color:var(--accent-gold); font-weight:bold;">${escapeHtml(d.nickname)} (Você)</span>` : escapeHtml(d.nickname);
+    const rowClass = `match-guess-row ${isMe ? 'me' : ''} ${isMatchFinished(game) || isMatchLive(game) ? 'result-' + d.outcome : ''}`;
+
+    return `
+      <tr class="${rowClass}">
+        <td style="text-align:left; vertical-align:middle; padding:0.4rem 0.5rem;">
+          <div style="display:flex; align-items:center; gap:0.4rem;">
+            <span style="font-size:0.9rem; line-height:1;">${getPlayerEmoji(d.nickname)}</span>
+            <span style="font-family:var(--font-pixel); font-size:0.48rem; line-height:1.2;">${nameLabel}</span>
+          </div>
+        </td>
+        <td style="text-align:center; vertical-align:middle; font-family:var(--font-pixel); font-size:0.55rem; color:var(--text-main); padding:0.4rem 0.5rem;">
+          ${d.guessVal}
+        </td>
+        <td style="text-align:right; vertical-align:middle; padding:0.4rem 0.5rem;">
+          ${d.pointsHtml}
+        </td>
+      </tr>
     `;
   }).join('');
 }

@@ -63,6 +63,9 @@
         <a href="#jogos" class="nav-link" data-page="jogos" id="nav-jogos">
           <span class="nav-text">JOGOS</span>
         </a>
+        <a href="#resultados" class="nav-link" data-page="resultados" id="nav-resultados">
+          <span class="nav-text">RESULTADOS</span>
+        </a>
         <a href="#grupos" class="nav-link" data-page="grupos" id="nav-grupos">
           <span class="nav-text">GRUPOS</span>
         </a>
@@ -83,6 +86,7 @@
       <a href="#ranking" class="mobile-nav-link" data-page="ranking">INÍCIO</a>
       <a href="#palpites" class="mobile-nav-link" data-page="palpites">PALPITES</a>
       <a href="#jogos" class="mobile-nav-link" data-page="jogos">JOGOS</a>
+      <a href="#resultados" class="mobile-nav-link" data-page="resultados">RESULTADOS</a>
       <a href="#grupos" class="mobile-nav-link" data-page="grupos">GRUPOS</a>
     </div>
 
@@ -193,6 +197,35 @@
 
         <div id="jogos-container" class="jogos-container">
           <div class="loading-pixel">Carregando jogos...</div>
+        </div>
+      </div>
+
+      <!-- ===== PAGE: RESULTADOS ===== -->
+      <div id="page-resultados" class="page">
+        <div class="page-header">
+          <h2 class="page-title pixel-font">RESULTADOS</h2>
+          <div class="refresh-info">
+            <button id="btn-manual-refresh-resultados" class="pixel-btn btn-small btn-blue" style="margin-top:0;">🔄 ATUALIZAR DADOS</button>
+          </div>
+        </div>
+
+        <div class="resultados-layout">
+          <!-- Left/Top Side: Matches List -->
+          <div class="resultados-sidebar card pixel-card">
+            <div class="card-label pixel-font-sm">SELECIONE O JOGO ⚽</div>
+            <div id="resultados-matches-list" class="resultados-matches-list">
+              <div class="loading-pixel">Carregando partidas...</div>
+            </div>
+          </div>
+
+          <!-- Right/Bottom Side: Guess details & stats -->
+          <div class="resultados-main">
+            <div id="resultados-detail-card" class="card pixel-card resultados-detail-card empty">
+              <div class="resultados-empty-msg pixel-font-sm">
+                ◀ SELECIONE UM JOGO JÁ INICIADO AO LADO PARA VER OS PALPITES E ESTATÍSTICAS
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
