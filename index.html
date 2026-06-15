@@ -123,20 +123,20 @@
           </div>
           <div id="rules-content-palpites" class="hidden" style="margin-top: 1rem; border-top: 1px solid rgba(42,42,90,0.5); padding-top: 1rem;">
             <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem 1rem; font-size: 0.75rem; line-height: 1.6;">
-              <span style="color: var(--accent-green); font-weight: bold;">Placar Exato</span>
-              <span style="color: var(--accent-green); font-weight: bold;">+5 🪙</span>
-              
-              <span>Gols do Perdedor <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando o vencedor)</span></span>
-              <span style="color: var(--accent-blue);">+3 🪙</span>
+              <span style="color: var(--text-main); font-weight: bold;">Placar Exato</span>
+              <span style="color: var(--text-main); font-weight: bold;">+6 🪙</span>
               
               <span>Gols do Vencedor <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando o vencedor)</span></span>
-              <span style="color: var(--accent-blue);">+3 🪙</span>
+              <span style="color: var(--text-main);">+4 🪙</span>
               
               <span>Saldo de Gols <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando o vencedor)</span></span>
-              <span style="color: var(--accent-purple);">+2 🪙</span>
+              <span style="color: var(--text-main);">+3 🪙</span>
+              
+              <span>Gols do Perdedor <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando o vencedor)</span></span>
+              <span style="color: var(--text-main);">+2 🪙</span>
               
               <span>Empate <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando empate, mas placar diferente)</span></span>
-              <span style="color: var(--accent-purple);">+2 🪙</span>
+              <span style="color: var(--text-main);">+2 🪙</span>
               
               <span>Acertou Vencedor <span style="font-size: 0.6rem; color: var(--text-dim);">(qualquer outro placar)</span></span>
               <span style="color: var(--text-dim);">+1 🪙</span>
@@ -211,20 +211,20 @@
           </div>
           <div id="rules-content" class="hidden" style="margin-top: 1rem; border-top: 1px solid rgba(42,42,90,0.5); padding-top: 1rem;">
             <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem 1rem; font-size: 0.75rem; line-height: 1.6;">
-              <span style="color: var(--accent-green); font-weight: bold;">Placar Exato</span>
-              <span style="color: var(--accent-green); font-weight: bold;">+5 🪙</span>
-              
-              <span>Gols do Perdedor <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando o vencedor)</span></span>
-              <span style="color: var(--accent-blue);">+3 🪙</span>
+              <span style="color: var(--text-main); font-weight: bold;">Placar Exato</span>
+              <span style="color: var(--text-main); font-weight: bold;">+6 🪙</span>
               
               <span>Gols do Vencedor <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando o vencedor)</span></span>
-              <span style="color: var(--accent-blue);">+3 🪙</span>
+              <span style="color: var(--text-main);">+4 🪙</span>
               
               <span>Saldo de Gols <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando o vencedor)</span></span>
-              <span style="color: var(--accent-purple);">+2 🪙</span>
+              <span style="color: var(--text-main);">+3 🪙</span>
+              
+              <span>Gols do Perdedor <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando o vencedor)</span></span>
+              <span style="color: var(--text-main);">+2 🪙</span>
               
               <span>Empate <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando empate, mas placar diferente)</span></span>
-              <span style="color: var(--accent-purple);">+2 🪙</span>
+              <span style="color: var(--text-main);">+2 🪙</span>
               
               <span>Acertou Vencedor <span style="font-size: 0.6rem; color: var(--text-dim);">(qualquer outro placar)</span></span>
               <span style="color: var(--text-dim);">+1 🪙</span>
@@ -247,6 +247,9 @@
       <div id="page-grupos" class="page">
         <div class="page-header">
           <h2 class="page-title pixel-font">GRUPOS</h2>
+          <div class="refresh-info">
+            <button id="btn-manual-refresh-groups" class="pixel-btn btn-small btn-blue" style="margin-top:0;">🔄 ATUALIZAR DADOS</button>
+          </div>
         </div>
 
         <div id="grupos-grid" class="grupos-grid">

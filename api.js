@@ -43,15 +43,38 @@ async function apiGetTeams() {
 
 // ---- HELPERS ----
 
-// Parse "MM/DD/YYYY HH:mm" → Date object (local time)
-function parseMatchDate(dateStr) {
+// Stadium offsets relative to UTC in June/July 2026
+const STADIUM_OFFSETS = {
+  '1':  -6, // Mexico City (CST)
+  '2':  -6, // Guadalajara (CST)
+  '3':  -6, // Monterrey (CST)
+  '4':  -5, // Dallas (CDT)
+  '5':  -5, // Houston (CDT)
+  '6':  -5, // Kansas City (CDT)
+  '7':  -4, // Atlanta (EDT)
+  '8':  -4, // Miami (EDT)
+  '9':  -4, // Boston (EDT)
+  '10': -4, // Philadelphia (EDT)
+  '11': -4, // New York/NJ (EDT)
+  '12': -4, // Toronto (EDT)
+  '13': -7, // Vancouver (PDT)
+  '14': -7, // Seattle (PDT)
+  '15': -7, // San Francisco (PDT)
+  '16': -7, // Los Angeles (PDT)
+};
+
+// Parse "MM/DD/YYYY HH:mm" → Date object (Brasilia / America/Sao_Paulo Time aware)
+function parseMatchDate(dateStr, stadiumId) {
   if (!dateStr) return null;
-  // Format: "06/11/2026 13:00"
   const [datePart, timePart] = dateStr.split(' ');
   const [month, day, year] = datePart.split('/');
   const [hour, min] = (timePart || '00:00').split(':');
-  return new Date(parseInt(year), parseInt(month) - 1, parseInt(day),
-                  parseInt(hour), parseInt(min));
+
+  const offset = STADIUM_OFFSETS[String(stadiumId)] || -5;
+  const dateStrUTC = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${min.padStart(2, '0')}:00`;
+  const timezoneSuffix = (offset >= 0 ? '+' : '-') + String(Math.abs(offset)).padStart(2, '0') + ':00';
+  
+  return new Date(dateStrUTC + timezoneSuffix);
 }
 
 // Is match live right now?
@@ -68,20 +91,19 @@ function isMatchFinished(game) {
          game.time_elapsed === 'finished';
 }
 
-// Is match today (local)?
+// Is match today (Brasilia local)?
 function isMatchToday(game) {
-  const d = parseMatchDate(game.local_date);
+  const d = parseMatchDate(game.local_date, game.stadium_id);
   if (!d) return false;
-  const today = new Date();
-  return d.getFullYear() === today.getFullYear() &&
-         d.getMonth() === today.getMonth() &&
-         d.getDate() === today.getDate();
+  const todayStr = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  const matchStr = d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  return todayStr === matchStr;
 }
 
 // Has match started? (kickoff passed)
 function hasMatchStarted(game) {
   if (isMatchFinished(game) || isMatchLive(game)) return true;
-  const d = parseMatchDate(game.local_date);
+  const d = parseMatchDate(game.local_date, game.stadium_id);
   if (!d) return false;
   return Date.now() >= d.getTime();
 }
@@ -92,24 +114,29 @@ function getNextMatch(games) {
   const upcoming = games
     .filter(g => !isMatchFinished(g) && !isMatchLive(g))
     .filter(g => {
-      const d = parseMatchDate(g.local_date);
+      const d = parseMatchDate(g.local_date, g.stadium_id);
       return d && d.getTime() > now;
     })
     .sort((a, b) => {
-      const da = parseMatchDate(a.local_date);
-      const db = parseMatchDate(b.local_date);
+      const da = parseMatchDate(a.local_date, a.stadium_id);
+      const db = parseMatchDate(b.local_date, b.stadium_id);
       return da - db;
     });
   return upcoming[0] || null;
 }
 
-// Group games by date string
+// Group games by date string in Brasilia Time
 function groupGamesByDate(games) {
   const grouped = {};
   games.forEach(g => {
-    const d = parseMatchDate(g.local_date);
+    const d = parseMatchDate(g.local_date, g.stadium_id);
     if (!d) return;
-    const key = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+    const key = d.toLocaleDateString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long'
+    });
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(g);
   });
@@ -245,26 +272,31 @@ function phaseLabelPt(type) {
   return map[type] || type;
 }
 
-// Format date for display
-function formatMatchDate(dateStr) {
-  const d = parseMatchDate(dateStr);
+// Format date for display in Brasilia Time
+function formatMatchDate(dateStr, stadiumId) {
+  const d = parseMatchDate(dateStr, stadiumId);
   if (!d) return '--';
   return d.toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
     day: '2-digit', month: '2-digit',
     hour: '2-digit', minute: '2-digit'
   });
 }
 
-// Format time only
-function formatMatchTime(dateStr) {
-  const d = parseMatchDate(dateStr);
+// Format time only in Brasilia Time
+function formatMatchTime(dateStr, stadiumId) {
+  const d = parseMatchDate(dateStr, stadiumId);
   if (!d) return '--:--';
-  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
 // Countdown to match
-function countdownToMatch(dateStr) {
-  const d = parseMatchDate(dateStr);
+function countdownToMatch(dateStr, stadiumId) {
+  const d = parseMatchDate(dateStr, stadiumId);
   if (!d) return '';
   const diff = d.getTime() - Date.now();
   if (diff <= 0) return 'Agora!';
@@ -275,4 +307,30 @@ function countdownToMatch(dateStr) {
     return `em ${days}d`;
   }
   return `em ${h}h${m.toString().padStart(2,'0')}m`;
+}
+
+// TEAM 3-LETTER ABBREVIATIONS IN PORTUGUESE / STANDARD
+const TEAM_ABBR = {
+  'Mexico': 'MEX', 'South Africa': 'AFS', 'South Korea': 'COR',
+  'Czech Republic': 'CZE', 'Canada': 'CAN', 'Bosnia and Herzegovina': 'BIH',
+  'United States': 'EUA', 'Paraguay': 'PAR', 'Qatar': 'QAT',
+  'Switzerland': 'SUI', 'Brazil': 'BRA', 'Morocco': 'MAR',
+  'Haiti': 'HAI', 'Scotland': 'ESC', 'Australia': 'AUS',
+  'Turkey': 'TUR', 'Germany': 'ALE', 'Curaçao': 'CUR',
+  'Ivory Coast': 'CIV', 'Ecuador': 'ECU', 'Netherlands': 'HOL',
+  'Japan': 'JAP', 'Sweden': 'SUE', 'Tunisia': 'TUN',
+  'Spain': 'ESP', 'Cape Verde': 'CPV', 'Saudi Arabia': 'ARA',
+  'Uruguay': 'URU', 'Belgium': 'BEL', 'Egypt': 'EGI',
+  'Iran': 'IRA', 'New Zealand': 'NZL', 'France': 'FRA',
+  'Senegal': 'SEN', 'Iraq': 'IRQ', 'Norway': 'NOR',
+  'Austria': 'AUT', 'Jordan': 'JOR', 'Argentina': 'ARG',
+  'Algeria': 'ALG', 'Portugal': 'POR', 'Democratic Republic of the Congo': 'RDC',
+  'Uzbekistan': 'UZB', 'England': 'ING', 'Croatia': 'CRO',
+  'Colombia': 'COL', 'Ghana': 'GHA', 'Panama': 'PAN',
+  'Bolivia': 'BOL', 'Albania': 'ALB', 'Denmark': 'DIN',
+  'Slovakia': 'SLO'
+};
+
+function teamAbbr(nameEn) {
+  return TEAM_ABBR[nameEn] || (nameEn ? nameEn.substring(0, 3).toUpperCase() : '???');
 }

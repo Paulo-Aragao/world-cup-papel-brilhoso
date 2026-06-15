@@ -3,18 +3,18 @@
 // ============================================
 
 const POINTS = {
-  EXACT:        5, // Placar exato
-  LOSER_GOALS:  3, // Gols do perdedor (apenas se acertar o vencedor)
-  WINNER_GOALS: 3, // Gols do vencedor (apenas se acertar o vencedor)
-  DIFF_GOALS:   2, // Saldo de gols (apenas se acertar o vencedor)
+  EXACT:        6, // Placar exato
+  WINNER_GOALS: 4, // Gols do vencedor (apenas se acertar o vencedor)
+  DIFF_GOALS:   3, // Saldo de gols (apenas se acertar o vencedor)
+  LOSER_GOALS:  2, // Gols do perdedor (apenas se acertar o vencedor)
   DRAW:         2, // Empate (acertou que seria empate mas errou o placar)
   WINNER:       1, // Apenas acertou o vencedor (com saldo/gols diferentes)
   CHAMPION:    15, // Bônus campeão acertado
   RUNNER:       0, // Bônus vice-campeão (futuro)
 };
 
-// Calcula resultado de um palpite vs placar real
-// Retorna: { points, result: 'exact' | 'loser_goals' | 'winner_goals' | 'diff_goals' | 'draw' | 'winner' | 'wrong' | 'pending' }
+// Calcula resultado de um palpite vs placar real (sempre checando do maior para o menor ponto)
+// Retorna: { points, result: 'exact' | 'winner_goals' | 'diff_goals' | 'loser_goals' | 'draw' | 'winner' | 'wrong' | 'pending' }
 function calcGuessResult(guess, game) {
   if (!guess) return { points: 0, result: 'pending' };
   if (guess.home_score == null || guess.away_score == null) return { points: 0, result: 'pending' };
@@ -29,7 +29,7 @@ function calcGuessResult(guess, game) {
     return { points: 0, result: 'pending' };
   }
 
-  // 1. Placar exato (5 pts)
+  // 1. Placar exato (6 pts)
   if (guessHome === realHome && guessAway === realAway) {
     return { points: POINTS.EXACT, result: 'exact' };
   }
@@ -57,21 +57,21 @@ function calcGuessResult(guess, game) {
   const guessWinnerScore = isHomeWinner ? guessHome : guessAway;
   const guessLoserScore = isHomeWinner ? guessAway : guessHome;
 
-  // 3. Acertou gols do perdedor (3 pts)
-  if (guessLoserScore === realLoserScore) {
-    return { points: POINTS.LOSER_GOALS, result: 'loser_goals' };
-  }
-
-  // 4. Acertou gols do vencedor (3 pts)
+  // 3. Acertou gols do vencedor (4 pts)
   if (guessWinnerScore === realWinnerScore) {
     return { points: POINTS.WINNER_GOALS, result: 'winner_goals' };
   }
 
-  // 5. Acertou saldo de gols (2 pts)
+  // 4. Acertou saldo de gols (3 pts)
   const realDiff = realWinnerScore - realLoserScore;
   const guessDiff = guessWinnerScore - guessLoserScore;
   if (realDiff === guessDiff) {
     return { points: POINTS.DIFF_GOALS, result: 'diff_goals' };
+  }
+
+  // 5. Acertou gols do perdedor (2 pts)
+  if (guessLoserScore === realLoserScore) {
+    return { points: POINTS.LOSER_GOALS, result: 'loser_goals' };
   }
 
   // 6. Acertou vencedor apenas (1 pt)

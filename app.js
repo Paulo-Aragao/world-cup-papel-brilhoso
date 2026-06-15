@@ -292,6 +292,24 @@ function bindManualRefreshBtn() {
   };
 }
 
+function bindGroupsRefreshBtn() {
+  const btn = document.getElementById('btn-manual-refresh-groups');
+  if (!btn) return;
+  btn.onclick = async () => {
+    btn.disabled = true;
+    btn.textContent = '⏳ Atualizando...';
+    try {
+      await manualRefreshAll();
+      showToast('🔄 Dados atualizados!', 'success');
+    } catch (err) {
+      showToast('❌ Erro ao atualizar', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔄 ATUALIZAR DADOS';
+    }
+  };
+}
+
 // ---- NAVIGATION ----
 function bindNavEvents() {
   // Desktop nav links
@@ -376,6 +394,7 @@ async function renderPage(page) {
     case 'grupos':
       await loadGroups();
       renderGrupos();
+      bindGroupsRefreshBtn();
       break;
   }
 }
@@ -959,7 +978,7 @@ function renderGroupCard(group) {
   const teamsHtml = teams.map((team, idx) => {
     const apiTeam = getTeamById(team.team_id);
     const nameEn = apiTeam ? apiTeam.name_en : '';
-    const namePt = teamNamePt(nameEn);
+    const abbr = teamAbbr(nameEn);
     const flag = teamFlag(nameEn);
     const pts = team.points ?? team.pts ?? 0;
     const pg = team.played ?? team.pld ?? 0;
@@ -973,7 +992,7 @@ function renderGroupCard(group) {
 
     return `
       <tr class="${isQualified ? 'qualifier' : ''}">
-        <td>${flag} ${escapeHtml(namePt)}</td>
+        <td>${flag} ${abbr}</td>
         <td>${pg}</td>
         <td>${w}</td>
         <td>${d}</td>
