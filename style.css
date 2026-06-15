@@ -1549,3 +1549,84 @@ body {
 @keyframes star-blink-anim {
   50% { opacity: 0; }
 }
+
+/* ============================================
+   COLLAPSIBLE PARTICIPANT GUESSES (JOGOS TAB)
+   ============================================ */
+.match-guesses-collapsible {
+  margin-top: 0.9rem;
+  border-top: 1px dashed #2a2a5a;
+  padding-top: 0.75rem;
+  grid-column: 1 / -1; /* spans full width in grid layout */
+  width: 100%;
+}
+
+.btn-toggle-match-guesses {
+  width: 100%;
+  background: var(--bg-card2);
+  border: 1px solid #2a2a5a;
+  color: var(--text-dim);
+  font-family: var(--font-pixel);
+  font-size: 0.48rem;
+  padding: 0.5rem;
+  cursor: pointer;
+  box-shadow: 2px 2px 0px #000;
+  text-align: center;
+  outline: none;
+}
+
+.btn-toggle-match-guesses:hover {
+  border-color: var(--accent-blue);
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.btn-toggle-match-guesses:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px #000;
+}
+
+.match-guesses-list {
+  margin-top: 0.75rem;
+  background: rgba(7, 7, 26, 0.4);
+  border: 1px solid #2a2a5a;
+  padding: 0.5rem;
+  overflow-x: auto;
+}
+
+.match-guesses-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.match-guesses-table th {
+  border-bottom: 2px solid #2a2a5a;
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  color: var(--text-dim);
+  padding: 0.4rem 0.5rem;
+}
+
+.match-guesses-table td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid rgba(42, 42, 90, 0.3);
+}
+
+.match-guess-row.me {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Match guess row highlights by points category */
+.match-guess-row.result-exact {
+  border-left: 3px solid var(--accent-gold);
+}
+.match-guess-row.result-winner_goals,
+.match-guess-row.result-diff_goals,
+.match-guess-row.result-loser_goals,
+.match-guess-row.result-draw,
+.match-guess-row.result-winner {
+  border-left: 3px solid var(--accent-blue);
+}
+.match-guess-row.result-wrong {
+  border-left: 3px solid var(--accent-red);
+}

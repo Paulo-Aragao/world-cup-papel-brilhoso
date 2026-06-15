@@ -577,6 +577,20 @@ function renderMatchCard(game) {
     }
   }
 
+  const matchStarted = hasMatchStarted(game);
+  const collapsibleHtml = matchStarted
+    ? `
+      <div class="match-guesses-collapsible">
+        <button class="btn-toggle-match-guesses pixel-font" data-match-id="${matchId}">
+          ▼ PALPITES DA GALERA
+        </button>
+        <div class="match-guesses-list hidden" id="guesses-list-${matchId}">
+          <div class="loading-pixel">Carregando palpites...</div>
+        </div>
+      </div>
+    `
+    : '';
+
   return `
     <div class="${cardClass}">
       <div class="team-info">
@@ -593,7 +607,71 @@ function renderMatchCard(game) {
         <span class="team-name">${escapeHtml(awayPt)}</span>
       </div>
       ${guessHtml}
+      ${collapsibleHtml}
     </div>
+  `;
+}
+
+function getMatchGuessesHTML(matchId, game) {
+  const matchGuesses = state.allGuesses.filter(g => g.match_id === matchId);
+  const users = [...state.allUsers].sort((a, b) => a.nickname.localeCompare(b.nickname));
+  
+  if (users.length === 0) {
+    return `<div class="guesses-list-empty" style="text-align:center; padding:1rem; font-family:var(--font-pixel); font-size:0.5rem; color:var(--text-dim)">Nenhum participante encontrado.</div>`;
+  }
+  
+  const rowsHtml = users.map(user => {
+    const guess = matchGuesses.find(g => g.user_id === user.id);
+    const hasGuessed = guess && guess.home_score != null && guess.away_score != null;
+    
+    let guessVal = '—';
+    let ptsLabel = '';
+    let rowClass = 'match-guess-row';
+    
+    if (hasGuessed) {
+      guessVal = `${guess.home_score} × ${guess.away_score}`;
+      if (isMatchFinished(game)) {
+        const { result, points } = calcGuessResult(guess, game);
+        ptsLabel = `<span class="guess-pts-badge pts-${outcomeClass(result)}">+${points} 🪙</span>`;
+        rowClass += ` result-${outcomeClass(result)}`;
+      } else {
+        ptsLabel = `<span class="guess-pts-badge" style="background:var(--bg-card2); color:var(--accent-blue); border:1px solid var(--accent-blue); padding:0.15rem 0.35rem; font-size:0.45rem;">AGUARDANDO</span>`;
+      }
+    } else {
+      guessVal = '—';
+      if (isMatchFinished(game)) {
+        ptsLabel = `<span class="guess-pts-badge pts-wrong">+0 🪙</span>`;
+        rowClass += ' result-wrong';
+      } else {
+        ptsLabel = `<span class="guess-pts-badge" style="background:var(--bg-card2); color:var(--text-muted); border:1px dashed var(--text-muted); padding:0.15rem 0.35rem; font-size:0.45rem;">PENDENTE</span>`;
+      }
+    }
+    
+    const isMe = user.id === state.currentUser?.id;
+    const nameDisplay = isMe ? `<strong style="color:var(--accent-gold)">${escapeHtml(user.nickname)} (Você)</strong>` : escapeHtml(user.nickname);
+    
+    return `
+      <tr class="${rowClass} ${isMe ? 'me' : ''}">
+        <td style="font-family:var(--font-pixel); font-size:0.55rem; padding:0.5rem; text-align:left;">${nameDisplay}</td>
+        <td style="font-family:var(--font-score); font-size:1.2rem; padding:0.5rem; text-align:center; font-weight:bold; color:var(--accent-gold); letter-spacing:1px">${guessVal}</td>
+        <td style="padding:0.5rem; text-align:right;">${ptsLabel}</td>
+      </tr>
+    `;
+  }).join('');
+  
+  return `
+    <table class="match-guesses-table" style="width:100%; border-collapse:collapse; margin-top:0.5rem;">
+      <thead>
+        <tr style="border-bottom: 2px solid #2a2a5a;">
+          <th style="font-family:var(--font-pixel); font-size:0.45rem; color:var(--text-dim); text-align:left; padding:0.5rem;">JOGADOR</th>
+          <th style="font-family:var(--font-pixel); font-size:0.45rem; color:var(--text-dim); text-align:center; padding:0.5rem;">PALPITE</th>
+          <th style="font-family:var(--font-pixel); font-size:0.45rem; color:var(--text-dim); text-align:right; padding:0.5rem;">PONTOS</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+    </table>
   `;
 }
 
@@ -1026,6 +1104,26 @@ function renderJogosContainer(games) {
   });
 
   container.innerHTML = html;
+
+  // Bind collapsible events
+  container.querySelectorAll('.btn-toggle-match-guesses').forEach(btn => {
+    btn.onclick = () => {
+      const matchId = parseInt(btn.dataset.matchId);
+      const listEl = document.getElementById(`guesses-list-${matchId}`);
+      if (!listEl) return;
+      
+      const isHidden = listEl.classList.contains('hidden');
+      if (isHidden) {
+        listEl.classList.remove('hidden');
+        btn.textContent = '▲ RECOLHER PALPITES';
+        const game = state.games.find(g => parseInt(g.id) === matchId);
+        listEl.innerHTML = getMatchGuessesHTML(matchId, game);
+      } else {
+        listEl.classList.add('hidden');
+        btn.textContent = '▼ PALPITES DA GALERA';
+      }
+    };
+  });
 }
 
 // ============================================
