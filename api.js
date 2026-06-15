@@ -14,7 +14,8 @@ async function apiFetch(endpoint) {
     return _cache[endpoint].data;
   }
 
-  const url = `${API_BASE}${endpoint}`;
+  const separator = endpoint.includes('?') ? '&' : '?';
+  const url = `${API_BASE}${endpoint}${separator}_t=${now}`;
   let data;
 
   // Helper function to fetch with a timeout
