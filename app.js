@@ -542,8 +542,8 @@ function renderMatchCard(game) {
 
   const live     = isMatchLive(game);
   const finished = isMatchFinished(game);
-  const homeScore = (game.home_score != null && game.home_score !== '') ? game.home_score : '-';
-  const awayScore = (game.away_score != null && game.away_score !== '') ? game.away_score : '-';
+  const homeScore = formatScoreValue(game.home_score, game);
+  const awayScore = formatScoreValue(game.away_score, game);
 
   const statusBadge = live
     ? '<span class="match-status-badge badge-live">⚡ AO VIVO</span>'
@@ -911,8 +911,8 @@ function renderGuessRow(game, isToday = false) {
   if (isToday) rowClass += ' today-highlight';
 
   if (finished) {
-    const realH = game.home_score;
-    const realA = game.away_score;
+    const realH = formatScoreValue(game.home_score, game);
+    const realA = formatScoreValue(game.away_score, game);
 
     if (guess?.home_score != null && guess?.away_score != null) {
       const { result, points } = calcGuessResult(guess, game);
@@ -1246,7 +1246,9 @@ function renderResultados() {
     const homeFlag = teamFlag(game.home_team_name_en);
     const awayFlag = teamFlag(game.away_team_name_en);
 
-    let scoreDisplay = `${game.home_score} - ${game.away_score}`;
+    const homeScore = formatScoreValue(game.home_score, game);
+    const awayScore = formatScoreValue(game.away_score, game);
+    let scoreDisplay = `${homeScore} - ${awayScore}`;
     let statusLabel = 'FIM';
     let statusStyle = '';
 
@@ -1348,20 +1350,13 @@ function renderResultadosDetail(matchId) {
     }
   });
 
-  let scoreDisplayHtml = '';
-  if (isMatchFinished(game) || isMatchLive(game)) {
-    scoreDisplayHtml = `
-      <span class="score-display">${game.home_score}</span>
-      <span class="resultados-detail-score-hyphen">:</span>
-      <span class="score-display">${game.away_score}</span>
-    `;
-  } else {
-    scoreDisplayHtml = `
-      <span class="score-display">-</span>
-      <span class="resultados-detail-score-hyphen">:</span>
-      <span class="score-display">-</span>
-    `;
-  }
+  const homeScore = formatScoreValue(game.home_score, game);
+  const awayScore = formatScoreValue(game.away_score, game);
+  let scoreDisplayHtml = `
+    <span class="score-display">${homeScore}</span>
+    <span class="resultados-detail-score-hyphen">:</span>
+    <span class="score-display">${awayScore}</span>
+  `;
 
   let statusText = 'ANDAMENTO';
   if (isMatchLive(game)) {
@@ -1711,4 +1706,12 @@ function escapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function formatScoreValue(score, game) {
+  if (score === null || score === undefined || score === '') {
+    const active = isMatchLive(game) || isMatchFinished(game);
+    return active ? '0' : '-';
+  }
+  return score;
 }
