@@ -131,7 +131,6 @@ async function bootApp() {
 
   // Set nav user info
   document.getElementById('nav-nick-display').textContent = state.currentUser.nickname;
-  document.getElementById('nav-avatar').textContent = state.currentUser.avatar_seed || '⚽';
 
   // Load initial data
   await Promise.all([
@@ -913,7 +912,6 @@ function renderRanking() {
     return `
       <div class="ranking-row ${posClass} ${isMe ? 'me' : ''}">
         <span class="rank-pos ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}">${medal}</span>
-        <span class="rank-avatar" style="font-size:1.4rem">${u.avatar_seed || '⚽'}</span>
         <div class="rank-detail">
           <div class="rank-detail-nick">${escapeHtml(u.nickname)}${isMe ? ' <span style="color:var(--accent-gold)">← você</span>' : ''}</div>
           <div class="rank-detail-stats">

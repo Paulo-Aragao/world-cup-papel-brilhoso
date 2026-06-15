@@ -220,10 +220,7 @@
       background: rgba(255,255,255,0.02);
     }
 
-    .avatar-cell {
-      font-size: 1.2rem;
-      width: 40px;
-    }
+    /* Removed avatar styling */
 
     .username-cell {
       font-family: var(--font-pixel);
@@ -263,7 +260,6 @@
         <table class="user-table">
           <thead>
             <tr>
-              <th>Avatar</th>
               <th>ID (Login)</th>
               <th>Apelido</th>
               <th>Campeão</th>
@@ -272,7 +268,7 @@
           </thead>
           <tbody id="user-rows">
             <tr>
-              <td colspan="5" style="text-align: center; color: var(--text-dim);">Carregando usuários...</td>
+              <td colspan="4" style="text-align: center; color: var(--text-dim);">Carregando usuários...</td>
             </tr>
           </tbody>
         </table>
@@ -319,13 +315,10 @@
       btnCreate.disabled = true;
       btnCreate.textContent = 'Criando...';
 
-      const avatarEmojis = ['⚽','🏆','🥅','🦁','🐯','🦊','🐼','🐧','🦅','🐉','🦄','🐻'];
-      const avatar = avatarEmojis[Math.floor(Math.random() * avatarEmojis.length)];
-
       try {
         const { data, error } = await supabaseClient
           .from('users')
-          .insert({ username, nickname, avatar_seed: avatar })
+          .insert({ username, nickname, avatar_seed: '' })
           .select()
           .single();
 
@@ -353,14 +346,13 @@
         if (error) throw error;
 
         if (users.length === 0) {
-          userRows.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-dim);">Nenhum usuário cadastrado.</td></tr>';
+          userRows.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-dim);">Nenhum usuário cadastrado.</td></tr>';
           return;
         }
 
         userRows.innerHTML = users.map(user => {
           return `
             <tr>
-              <td class="avatar-cell">${user.avatar_seed || '⚽'}</td>
               <td class="username-cell">${escapeHtml(user.username)}</td>
               <td class="nickname-cell">${escapeHtml(user.nickname)}</td>
               <td>${user.champion ? '🏆 ' + escapeHtml(user.champion) : '—'}</td>
@@ -371,7 +363,7 @@
           `;
         }).join('');
       } catch (err) {
-        userRows.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--accent-red);">Erro ao carregar: ${err.message}</td></tr>`;
+        userRows.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--accent-red);">Erro ao carregar: ${err.message}</td></tr>`;
       }
     }
 
