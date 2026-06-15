@@ -37,8 +37,18 @@ function calcGuessResult(guess, game) {
   const realOutcome = Math.sign(realHome - realAway);   // 1 (Home win), -1 (Away win), 0 (Draw)
   const guessOutcome = Math.sign(guessHome - guessAway); // 1, -1, 0
 
-  // Se errou o vencedor / empate principal, ganha 0 pontos
+  // Se errou o vencedor / empate principal
   if (realOutcome !== guessOutcome) {
+    // Exceção: "Gols do Perdedor" não exige acertar o vencedor
+    if (realOutcome !== 0) { // Se não foi empate real, existe um perdedor real
+      const isHomeRealLoser = realHome < realAway;
+      const realLoserScore = isHomeRealLoser ? realHome : realAway;
+      const guessLoserScore = isHomeRealLoser ? guessHome : guessAway;
+
+      if (guessLoserScore === realLoserScore) {
+        return { points: POINTS.LOSER_GOALS, result: 'loser_goals' };
+      }
+    }
     return { points: 0, result: 'wrong' };
   }
 
