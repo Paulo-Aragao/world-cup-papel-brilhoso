@@ -112,7 +112,46 @@
             <span id="champion-name" class="pixel-font-sm">---</span>
             <span style="font-size: 0.5rem; color: var(--text-dim); margin-left: 0.5rem;">(Clique para mudar)</span>
           </div>
+          <p class="pixel-text-sm" style="font-size: 0.55rem; color: var(--text-dim); margin-top: 0.75rem; line-height: 1.4; border-top: 1px dashed rgba(42,42,90,0.5); padding-top: 0.5rem;">
+            ⚠️ Regulamento: Você deve escolher seu campeão nas primeiras 24 horas após o seu cadastro. Após esse prazo, a escolha será travada automaticamente no banco de dados.
+          </p>
         </div>
+
+        <!-- Tabela de Regras (Collapsible/Accordion) -->
+        <div class="card pixel-card" style="margin-bottom: 1.5rem;">
+          <div class="card-label pixel-font-sm" style="color: var(--accent-gold); display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="document.getElementById('rules-content-palpites').classList.toggle('hidden')">
+            <span>ℹ️ COMO FUNCIONA A PONTUAÇÃO (COINS) (Clique para ver)</span>
+            <span style="font-size: 0.6rem;">▼</span>
+          </div>
+          <div id="rules-content-palpites" class="hidden" style="margin-top: 1rem; border-top: 1px solid rgba(42,42,90,0.5); padding-top: 1rem;">
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem 1rem; font-size: 0.75rem; line-height: 1.6;">
+              <span style="color: var(--accent-green); font-weight: bold;">Placar Exato</span>
+              <span style="color: var(--accent-green); font-weight: bold;">+5 🪙</span>
+              
+              <span>Gols do Perdedor <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando o vencedor)</span></span>
+              <span style="color: var(--accent-blue);">+3 🪙</span>
+              
+              <span>Gols do Vencedor <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando o vencedor)</span></span>
+              <span style="color: var(--accent-blue);">+3 🪙</span>
+              
+              <span>Saldo de Gols <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando o vencedor)</span></span>
+              <span style="color: var(--accent-purple);">+2 🪙</span>
+              
+              <span>Empate <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando empate, mas placar diferente)</span></span>
+              <span style="color: var(--accent-purple);">+2 🪙</span>
+              
+              <span>Acertou Vencedor <span style="font-size: 0.6rem; color: var(--text-dim);">(qualquer outro placar)</span></span>
+              <span style="color: var(--text-dim);">+1 🪙</span>
+              
+              <span style="border-top: 1px dashed var(--text-muted); padding-top: 0.5rem; font-weight: bold; color: var(--accent-gold);">Bônus Campeão da Copa <span style="font-size: 0.6rem; color: var(--text-dim);">(apostar em até 24h)</span></span>
+              <span style="border-top: 1px dashed var(--text-muted); padding-top: 0.5rem; font-weight: bold; color: var(--accent-gold);">+15 🪙</span>
+            </div>
+            <div style="font-size: 0.65rem; color: var(--text-dim); margin-top: 1rem; line-height: 1.4; border-top: 1px solid rgba(42,42,90,0.3); padding-top: 0.5rem;">
+              * As regras de pontuação de partidas são <strong>exclusivas</strong> e avaliadas de cima para baixo. Você recebe apenas a maior pontuação correspondente ao seu acerto, nunca a soma delas.
+            </div>
+          </div>
+        </div>
+
 
         <!-- Phase Tabs -->
         <div class="phase-tabs" id="phase-tabs">
@@ -164,6 +203,41 @@
         <div class="page-header">
           <h2 class="page-title pixel-font">RANKING</h2>
           <div class="pixel-text-sm" id="ranking-updated">Atualização em tempo real</div>
+        </div>
+
+        <!-- Tabela de Regras (Collapsible/Accordion) -->
+        <div class="card pixel-card" style="margin-bottom: 1.5rem;">
+          <div class="card-label pixel-font-sm" style="color: var(--accent-gold); display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="document.getElementById('rules-content').classList.toggle('hidden')">
+            <span>ℹ️ COMO FUNCIONA A PONTUAÇÃO (COINS) (Clique para ver)</span>
+            <span style="font-size: 0.6rem;">▼</span>
+          </div>
+          <div id="rules-content" class="hidden" style="margin-top: 1rem; border-top: 1px solid rgba(42,42,90,0.5); padding-top: 1rem;">
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem 1rem; font-size: 0.75rem; line-height: 1.6;">
+              <span style="color: var(--accent-green); font-weight: bold;">Placar Exato</span>
+              <span style="color: var(--accent-green); font-weight: bold;">+5 🪙</span>
+              
+              <span>Gols do Perdedor <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando o vencedor)</span></span>
+              <span style="color: var(--accent-blue);">+3 🪙</span>
+              
+              <span>Gols do Vencedor <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando o vencedor)</span></span>
+              <span style="color: var(--accent-blue);">+3 🪙</span>
+              
+              <span>Saldo de Gols <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando o vencedor)</span></span>
+              <span style="color: var(--accent-purple);">+2 🪙</span>
+              
+              <span>Empate <span style="font-size: 0.6rem; color: var(--text-dim);">(acertando empate, mas placar diferente)</span></span>
+              <span style="color: var(--accent-purple);">+2 🪙</span>
+              
+              <span>Acertou Vencedor <span style="font-size: 0.6rem; color: var(--text-dim);">(qualquer outro placar)</span></span>
+              <span style="color: var(--text-dim);">+1 🪙</span>
+              
+              <span style="border-top: 1px dashed var(--text-muted); padding-top: 0.5rem; font-weight: bold; color: var(--accent-gold);">Bônus Campeão da Copa <span style="font-size: 0.6rem; color: var(--text-dim);">(apostar em até 24h)</span></span>
+              <span style="border-top: 1px dashed var(--text-muted); padding-top: 0.5rem; font-weight: bold; color: var(--accent-gold);">+15 🪙</span>
+            </div>
+            <div style="font-size: 0.65rem; color: var(--text-dim); margin-top: 1rem; line-height: 1.4; border-top: 1px solid rgba(42,42,90,0.3); padding-top: 0.5rem;">
+              * As regras de pontuação de partidas são <strong>exclusivas</strong> e avaliadas de cima para baixo. Você recebe apenas a maior pontuação correspondente ao seu acerto, nunca a soma delas.
+            </div>
+          </div>
         </div>
 
         <div id="ranking-container" class="ranking-container">

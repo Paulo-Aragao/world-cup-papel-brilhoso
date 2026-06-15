@@ -974,6 +974,29 @@ body {
 .pts-correct { background: var(--accent-gold); color: #000; }
 .pts-wrong   { background: rgba(255,255,255,0.05); color: var(--text-dim); border: 1px solid #333; }
 
+.btn-save-row {
+  padding: 0.4rem 0.5rem;
+  font-size: 0.6rem;
+  margin-top: 0 !important;
+  background: var(--accent-green);
+  color: #000;
+  box-shadow: 2px 2px 0px #1a8a4a;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
+}
+.btn-save-row:hover {
+  background: #2ecc71;
+  box-shadow: 3px 3px 0px #1a8a4a;
+}
+.btn-save-row:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px #1a8a4a;
+}
+
 /* Result badge (top-right corner) */
 .guess-result-badge {
   position: absolute;
@@ -1318,6 +1341,29 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--accent-blue);
+}
+
+/* Styling for user guess info inside match card in Jogos page */
+.match-card-guess-row {
+  grid-column: 1 / -1;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed rgba(42, 42, 90, 0.7);
+  font-family: var(--font-pixel);
+  font-size: 0.42rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  letter-spacing: 1px;
+}
+.match-card-guess-label {
+  color: var(--text-dim);
+}
+.match-card-guess-value {
+  color: var(--text-main);
+  font-family: var(--font-score);
+  font-size: 1.2rem;
 }
 
 /* ============================================

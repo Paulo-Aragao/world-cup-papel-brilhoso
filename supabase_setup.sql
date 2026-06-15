@@ -75,3 +75,21 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER guesses_updated_at
   BEFORE UPDATE ON public.guesses
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- 7. Trigger para impor limite de 24 horas para definir/alterar o campeão
+CREATE OR REPLACE FUNCTION check_champion_time_limit()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Se o campeão está sendo alterado e se passaram mais de 24 horas desde o cadastro do usuário
+  IF NEW.champion IS DISTINCT FROM OLD.champion AND OLD.created_at < now() - INTERVAL '24 hours' THEN
+    RAISE EXCEPTION 'O prazo de 24 horas para definir ou alterar o campeão expirou!';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER trg_check_champion_time_limit
+  BEFORE UPDATE ON public.users
+  FOR EACH ROW
+  EXECUTE FUNCTION check_champion_time_limit();
+

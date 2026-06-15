@@ -389,7 +389,7 @@ function logout() {
 
 // ============================================================
 // RENDER: CHAMPION CARD
-// ============================================
+// ============================================================
 function renderChampionCard() {
   const user = state.currentUser;
   const selectEl = document.getElementById('champion-select');
@@ -397,6 +397,13 @@ function renderChampionCard() {
   const displayEl = document.getElementById('champion-display');
 
   if (!selectEl || !savedEl || !displayEl) return;
+
+  // Calculate 24h time limit from user creation timestamp
+  const createdTime = new Date(user.created_at || Date.now()).getTime();
+  const nowTime = Date.now();
+  const timeLimitMs = 24 * 60 * 60 * 1000;
+  const hoursLeft = (createdTime + timeLimitMs - nowTime) / (1000 * 60 * 60);
+  const isTimeUp = hoursLeft <= 0;
 
   // Populate select with all teams
   if (selectEl.options.length <= 1) {
@@ -411,41 +418,82 @@ function renderChampionCard() {
     });
   }
 
-  if (user?.champion) {
+  // Clear any previous time alert element
+  const oldAlert = document.getElementById('champion-alert-time');
+  if (oldAlert) oldAlert.remove();
+
+  if (isTimeUp) {
+    // Locked!
     displayEl.classList.add('hidden');
     savedEl.classList.remove('hidden');
-    document.getElementById('champion-flag').innerHTML = teamFlag(user.champion);
-    document.getElementById('champion-name').textContent = TEAM_NAME_PT[user.champion] || user.champion;
+    savedEl.style.cursor = 'default';
+    savedEl.onclick = null; // Disable clicking to change
+
+    if (user?.champion) {
+      document.getElementById('champion-flag').innerHTML = teamFlag(user.champion);
+      document.getElementById('champion-name').textContent = TEAM_NAME_PT[user.champion] || user.champion;
+      savedEl.querySelector('span:last-child').innerHTML = `<span style="color:var(--accent-red); font-size:0.5rem; margin-left:0.5rem;">🔒 Aposta Bloqueada (Limite de 24h Excedido)</span>`;
+    } else {
+      document.getElementById('champion-flag').innerHTML = '❌';
+      document.getElementById('champion-name').innerHTML = `<span style="color:var(--accent-red);">Nenhum campeão apostado</span>`;
+      savedEl.querySelector('span:last-child').innerHTML = `<span style="color:var(--accent-red); font-size:0.5rem; margin-left:0.5rem;">🔒 Bloqueado</span>`;
+    }
   } else {
-    displayEl.classList.remove('hidden');
-    savedEl.classList.add('hidden');
+    // Normal: countdown info
+    const timeText = hoursLeft < 1
+      ? `em ${Math.floor(hoursLeft * 60)}m`
+      : `em ${Math.floor(hoursLeft)}h`;
+
+    if (user?.champion) {
+      displayEl.classList.add('hidden');
+      savedEl.classList.remove('hidden');
+      savedEl.style.cursor = 'pointer';
+      document.getElementById('champion-flag').innerHTML = teamFlag(user.champion);
+      document.getElementById('champion-name').textContent = TEAM_NAME_PT[user.champion] || user.champion;
+      savedEl.querySelector('span:last-child').innerHTML = `<span style="color:var(--accent-blue); font-size:0.5rem; margin-left:0.5rem;">⏰ Pode mudar por mais ${timeText}</span>`;
+
+      savedEl.onclick = () => {
+        state.currentUser.champion = '';
+        renderChampionCard();
+      };
+    } else {
+      displayEl.classList.remove('hidden');
+      savedEl.classList.add('hidden');
+
+      const alertEl = document.createElement('div');
+      alertEl.id = 'champion-alert-time';
+      alertEl.className = 'pixel-font-sm';
+      alertEl.style.cssText = 'color:var(--accent-gold); margin-top:0.5rem; font-size:0.45rem;';
+      alertEl.textContent = `⚠️ ATENÇÃO: Você tem apenas ${timeText} para definir seu campeão!`;
+      displayEl.appendChild(alertEl);
+    }
   }
 
-  // Save champion
+  // Save champion button logic
   const saveBtn = document.getElementById('btn-save-champion');
   if (saveBtn) {
-    saveBtn.onclick = async () => {
-      const champion = selectEl.value;
-      if (!champion) return;
-      try {
-        await dbUpdateChampion(user.id, champion);
-        state.currentUser.champion = champion;
-        // Update local users array too
-        const u = state.allUsers.find(u => u.id === user.id);
-        if (u) u.champion = champion;
-        renderChampionCard();
-        showToast(`🏆 Campeão salvo: ${TEAM_NAME_PT[champion]}!`, 'success');
-      } catch (err) {
-        showToast('Erro ao salvar campeão', 'error');
-      }
-    };
+    if (isTimeUp) {
+      saveBtn.disabled = true;
+      saveBtn.style.opacity = '0.5';
+    } else {
+      saveBtn.disabled = false;
+      saveBtn.style.opacity = '1';
+      saveBtn.onclick = async () => {
+        const champion = selectEl.value;
+        if (!champion) return;
+        try {
+          await dbUpdateChampion(user.id, champion);
+          state.currentUser.champion = champion;
+          const u = state.allUsers.find(u => u.id === user.id);
+          if (u) u.champion = champion;
+          renderChampionCard();
+          showToast(`🏆 Campeão salvo: ${TEAM_NAME_PT[champion]}!`, 'success');
+        } catch (err) {
+          showToast('Erro ao salvar campeão', 'error');
+        }
+      };
+    }
   }
-
-  // Click on saved champion allows change
-  savedEl.onclick = () => {
-    state.currentUser.champion = '';
-    renderChampionCard();
-  };
 }
 
 // ============================================
@@ -470,6 +518,44 @@ function renderMatchCard(game) {
 
   const cardClass = `match-card ${live ? 'live' : ''} ${finished ? 'finished' : ''}`;
 
+  // Get user's guess for this match
+  const matchId = parseInt(game.id);
+  const guess = state.myGuesses[matchId];
+  let guessHtml = '';
+
+  if (guess && guess.home_score != null && guess.away_score != null) {
+    if (finished) {
+      const { result, points } = calcGuessResult(guess, game);
+      guessHtml = `
+        <div class="match-card-guess-row">
+          <span class="match-card-guess-label">SEU PALPITE:</span>
+          <span class="match-card-guess-value">${guess.home_score} × ${guess.away_score}</span>
+          <span class="guess-pts-badge pts-${outcomeClass(result)}">+${points} 🪙 (${resultCategoryLabel(result)})</span>
+        </div>`;
+    } else {
+      guessHtml = `
+        <div class="match-card-guess-row">
+          <span class="match-card-guess-label">SEU PALPITE:</span>
+          <span class="match-card-guess-value">${guess.home_score} × ${guess.away_score}</span>
+          <span class="guess-pts-badge" style="background: var(--bg-card2); color: var(--accent-blue); border: 1px solid var(--accent-blue);">AGUARDANDO ⏳</span>
+        </div>`;
+    }
+  } else {
+    if (finished) {
+      guessHtml = `
+        <div class="match-card-guess-row">
+          <span class="match-card-guess-label" style="color: var(--accent-red);">SEM PALPITE</span>
+          <span class="guess-pts-badge pts-wrong">+0 🪙 (Não palpitado)</span>
+        </div>`;
+    } else if (game.home_team_name_en && game.away_team_name_en) {
+      guessHtml = `
+        <div class="match-card-guess-row">
+          <span class="match-card-guess-label" style="color: var(--accent-gold);">SEM PALPITE</span>
+          <span class="guess-pts-badge" style="background: var(--bg-card2); color: var(--text-muted); border: 1px dashed var(--text-muted);">PENDENTE ✏️</span>
+        </div>`;
+    }
+  }
+
   return `
     <div class="${cardClass}">
       <div class="team-info">
@@ -485,6 +571,7 @@ function renderMatchCard(game) {
         <span class="team-flag">${awayFlag}</span>
         <span class="team-name">${escapeHtml(awayPt)}</span>
       </div>
+      ${guessHtml}
     </div>
   `;
 }
@@ -508,6 +595,20 @@ function bindPhaseTabEvents() {
       renderGuessesForPhase(state.currentPhase);
     };
   });
+}
+
+function resultCategoryLabel(result) {
+  const map = {
+    'exact': 'Placar Exato',
+    'loser_goals': 'Gols do Perdedor',
+    'winner_goals': 'Gols do Vencedor',
+    'diff_goals': 'Saldo de Gols',
+    'draw': 'Empate',
+    'winner': 'Vencedor do Jogo',
+    'wrong': 'Errou o Palpite',
+    'pending': 'Pendente'
+  };
+  return map[result] || result;
 }
 
 function renderGuessesForPhase(phase) {
@@ -544,6 +645,47 @@ function renderGuessesForPhase(phase) {
       input.value = input.value.replace(/[^0-9]/g, '').slice(0, 2);
     });
   });
+
+  // Bind individual save buttons next to each guess row
+  container.querySelectorAll('.btn-save-row').forEach(btn => {
+    btn.onclick = async () => {
+      const matchId = parseInt(btn.dataset.matchId);
+      const row = container.querySelector(`.guess-row[data-match-id="${matchId}"]`);
+      if (!row) return;
+
+      const homeInput = row.querySelector('[data-side="home"]');
+      const awayInput = row.querySelector('[data-side="away"]');
+      if (!homeInput || !awayInput) return;
+
+      const homeVal = homeInput.value;
+      const awayVal = awayInput.value;
+
+      if (homeVal === '' || awayVal === '') {
+        showToast('Preencha ambos os placares para salvar o palpite!', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '⏳';
+
+      try {
+        const home_score = parseInt(homeVal);
+        const away_score = parseInt(awayVal);
+
+        await dbSaveGuess(state.currentUser.id, matchId, home_score, away_score);
+        state.myGuesses[matchId] = { match_id: matchId, home_score, away_score };
+
+        showToast('Palpite salvo com sucesso! 🎯', 'success');
+        
+        // Refresh this phase view
+        renderGuessesForPhase(state.currentPhase);
+      } catch (err) {
+        showToast('❌ Erro ao salvar: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '💾';
+      }
+    };
+  });
 }
 
 function renderGuessRow(game) {
@@ -574,11 +716,11 @@ function renderGuessRow(game) {
       const { result, points } = calcGuessResult(guess, game);
       rowClass += ` ${resultClass(result)}`;
       resultBadge = `<span class="guess-result-badge">${resultEmoji(result)}</span>`;
-      pointsInfo  = `<span class="guess-pts-badge pts-${outcomeClass(result)}">+${points} 🪙</span>`;
+      pointsInfo  = `<span class="guess-pts-badge pts-${outcomeClass(result)}">+${points} 🪙 (${resultCategoryLabel(result)})</span>`;
     } else {
       rowClass += ' result-wrong';
       resultBadge = `<span class="guess-result-badge">😶</span>`;
-      pointsInfo  = `<span class="guess-pts-badge pts-wrong">+0 🪙</span>`;
+      pointsInfo  = `<span class="guess-pts-badge pts-wrong">+0 🪙 (Perdeu o limite)</span>`;
     }
 
     rowExtra = `
@@ -604,7 +746,8 @@ function renderGuessRow(game) {
       <input type="number" class="guess-score-input"
              min="0" max="99" value="${guessAway}"
              data-match="${matchId}" data-side="away"
-             placeholder="?" />`
+             placeholder="?" />
+      <button class="pixel-btn btn-save-row" data-match-id="${matchId}" title="Salvar este palpite">💾</button>`
     : !isDefined
       ? `
       <div class="guess-locked-score" title="Aguardando definição dos confrontos">
