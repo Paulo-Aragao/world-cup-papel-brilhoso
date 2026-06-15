@@ -1530,6 +1530,7 @@ function renderResultadosGuessesRows(game, matchGuesses) {
       points,
       outcome,
       hasGuessed,
+      pointsHtml,
       nickname: user.nickname
     };
   });
