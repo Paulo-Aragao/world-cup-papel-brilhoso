@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suíte de Testes Unitários 🏆</title>
+
+  <!-- Google Fonts: Pixel Art Style -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg-dark:    #07071a;
+      --bg-card:    #12122e;
+      --bg-card2:   #1a1a3e;
+      --accent-green: #2ecc71;
+      --accent-red:   #e63946;
+      --accent-blue:  #3d9be9;
+      --accent-gold:  #f5c518;
+      --text-main:  #e8e8ff;
+      --text-dim:   #7777aa;
+      --font-pixel: 'Press Start 2P', monospace;
+      --font-score: 'VT323', monospace;
+      --font-ui:    'Inter', sans-serif;
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      padding: 2rem;
+      margin: 0;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* Pixel scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255,255,255,0.015) 2px,
+        rgba(255,255,255,0.015) 4px
+      );
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .test-container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--bg-card);
+      border: 2px solid #2a2a5a;
+      box-shadow: 6px 6px 0px #000;
+      padding: 2rem;
+    }
+
+    .pixel-title {
+      font-family: var(--font-pixel);
+      font-size: 1rem;
+      color: var(--accent-gold);
+      text-align: center;
+      margin-bottom: 2rem;
+      text-shadow: 3px 3px 0px #000;
+      line-height: 1.6;
+    }
+
+    .summary-card {
+      background: var(--bg-card2);
+      border: 2px solid #2a2a5a;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      text-align: center;
+      gap: 1rem;
+    }
+
+    @media (max-width: 600px) {
+      .summary-card {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .summary-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .summary-label {
+      font-family: var(--font-pixel);
+      font-size: 0.45rem;
+      color: var(--text-dim);
+    }
+
+    .summary-val {
+      font-family: var(--font-score);
+      font-size: 3rem;
+      line-height: 1;
+      font-weight: bold;
+    }
+
+    .summary-val.passed { color: var(--accent-green); }
+    .summary-val.failed { color: var(--accent-red); }
+
+    .test-section-header {
+      font-family: var(--font-pixel);
+      font-size: 0.65rem;
+      color: var(--accent-blue);
+      margin: 2rem 0 1rem;
+      border-bottom: 2px solid #2a2a5a;
+      padding-bottom: 0.5rem;
+    }
+
+    .test-row {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      border: 1px solid rgba(42, 42, 90, 0.5);
+      margin-bottom: 0.5rem;
+      background: rgba(26, 26, 62, 0.3);
+      font-size: 0.85rem;
+    }
+
+    .test-row.fail {
+      border-color: var(--accent-red);
+      background: rgba(230, 57, 70, 0.05);
+    }
+
+    .test-status-badge {
+      font-family: var(--font-pixel);
+      font-size: 0.42rem;
+      padding: 0.3rem 0.5rem;
+      margin-right: 1rem;
+      text-align: center;
+      width: 80px;
+    }
+
+    .badge-pass {
+      background: var(--accent-green);
+      color: #000;
+    }
+
+    .badge-fail {
+      background: var(--accent-red);
+      color: #fff;
+    }
+
+    .test-message {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .test-details {
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+      border-left: 2px solid var(--accent-blue);
+      display: none;
+      white-space: pre-wrap;
+    }
+
+    .test-row.fail .test-details {
+      display: block;
+      border-left-color: var(--accent-red);
+    }
+
+    .btn-toggle-details {
+      background: none;
+      border: none;
+      color: var(--accent-blue);
+      cursor: pointer;
+      font-size: 0.75rem;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="test-container">
+    <h1 class="pixel-title">🏆 SUÍTE DE TESTES UNITÁRIOS<br>BOLÃO PAPEL BRILHOSO 2026</h1>
+
+    <div class="summary-card">
+      <div class="summary-item">
+        <span class="summary-label">TOTAL DE TESTES</span>
+        <span class="summary-val" id="total-tests">0</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">PASSOU</span>
+        <span class="summary-val passed" id="passed-tests">0</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">FALHOU</span>
+        <span class="summary-val failed" id="failed-tests">0</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">TAXA DE SUCESSO</span>
+        <span class="summary-val" id="success-rate">0%</span>
+      </div>
+    </div>
+
+    <div id="test-results">
+      <!-- Test sections will be rendered here -->
+    </div>
+  </div>
+
+  <!-- Scripts of the application -->
+  <script src="api.js"></script>
+  <script src="scoring.js"></script>
+
+  <!-- Test Framework and Unit Tests implementation -->
+  <script>
+    // Simple browser-based testing framework
+    const state = {
+      total: 0,
+      passed: 0,
+      failed: 0,
+      currentSection: null,
+      sectionContainer: null
+    };
+
+    function describe(sectionName, fn) {
+      // Create section header
+      const resultsDiv = document.getElementById('test-results');
+      const header = document.createElement('div');
+      header.className = 'test-section-header';
+      header.textContent = sectionName.toUpperCase();
+      resultsDiv.appendChild(header);
+
+      const sectionContainer = document.createElement('div');
+      resultsDiv.appendChild(sectionContainer);
+
+      state.currentSection = sectionName;
+      state.sectionContainer = sectionContainer;
+
+      fn();
+    }
+
+    function it(behavior, assertFn) {
+      state.total++;
+      const row = document.createElement('div');
+      row.className = 'test-row';
+
+      const badge = document.createElement('span');
+      badge.className = 'test-status-badge';
+      
+      const messageSpan = document.createElement('span');
+      messageSpan.className = 'test-message';
+      messageSpan.textContent = behavior;
+
+      const detailsDiv = document.createElement('div');
+      detailsDiv.className = 'test-details';
+
+      row.appendChild(badge);
+      row.appendChild(messageSpan);
+      row.appendChild(detailsDiv);
+
+      try {
+        assertFn();
+        
+        // Pass
+        state.passed++;
+        badge.className += ' badge-pass';
+        badge.textContent = 'PASS';
+      } catch (err) {
+        // Fail
+        state.failed++;
+        row.className += ' fail';
+        badge.className += ' badge-fail';
+        badge.textContent = 'FAIL';
+        detailsDiv.textContent = err.stack || err.message || err;
+      }
+
+      state.sectionContainer.appendChild(row);
+      updateSummary();
+    }
+
+    function assert(condition, message, details) {
+      if (!condition) {
+        throw new Error(message + (details ? '\nDetalhes:\n' + JSON.stringify(details, null, 2) : ''));
+      }
+    }
+
+    function assertEquals(actual, expected, message) {
+      assert(actual === expected, message || `Esperado: ${expected}, Obtido: ${actual}`, { expected, actual });
+    }
+
+    function updateSummary() {
+      document.getElementById('total-tests').textContent = state.total;
+      document.getElementById('passed-tests').textContent = state.passed;
+      document.getElementById('failed-tests').textContent = state.failed;
+      
+      const rate = state.total > 0 ? Math.round((state.passed / state.total) * 100) : 0;
+      const rateEl = document.getElementById('success-rate');
+      rateEl.textContent = `${rate}%`;
+      if (rate === 100) {
+        rateEl.style.color = 'var(--accent-green)';
+      } else if (rate > 70) {
+        rateEl.style.color = 'var(--accent-gold)';
+      } else {
+        rateEl.style.color = 'var(--accent-red)';
+      }
+    }
+
+    // ==========================================
+    // RUNNING TESTS
+    // ==========================================
+    window.onload = () => {
+
+      // ---- 1. DATE PARSING & TIMEZONE TESTS ----
+      describe('Timezone & Date Helpers', () => {
+        it('Deve converter data do estádio de Seattle (PDT/UTC-7) para fuso de Brasília (UTC-3)', () => {
+          // Seattle Lumen Field (stadium_id 14) - 12:00 PM local time
+          // 12:00 PT = 19:00 UTC = 16:00 Brasília time
+          const d = parseMatchDate("06/15/2026 12:00", "14");
+          assert(d instanceof Date, "Data inválida retornada");
+          
+          const formatted = formatMatchDate("06/15/2026 12:00", "14");
+          assertEquals(formatted, "15/06/2026 16:00", "Data formatada errada");
+          
+          const time = formatMatchTime("06/15/2026 12:00", "14");
+          assertEquals(time, "16:00", "Horário formatado errado");
+        });
+
+        it('Deve converter data do estádio de New York (EDT/UTC-4) para fuso de Brasília (UTC-3)', () => {
+          // MetLife Stadium (stadium_id 11) - 17:00 local time
+          // 17:00 ET = 21:00 UTC = 18:00 Brasília time
+          const d = parseMatchDate("06/25/2026 17:00", "11");
+          assert(d instanceof Date, "Data inválida");
+          
+          const formatted = formatMatchDate("06/25/2026 17:00", "11");
+          assertEquals(formatted, "25/06/2026 18:00", "Conversão de fuso incorreta");
+        });
+
+        it('Deve converter data do estádio do México (CST/UTC-6) para fuso de Brasília (UTC-3)', () => {
+          // Estadio Azteca (stadium_id 1) - 16:00 local time
+          // 16:00 CST = 22:00 UTC = 19:00 Brasília time
+          const formatted = formatMatchDate("06/29/2026 16:30", "1");
+          assertEquals(formatted, "29/06/2026 19:30", "Conversão de fuso no México incorreta");
+        });
+      });
+
+      // ---- 2. TEAM ABBREVIATIONS TESTS ----
+      describe('Team Names & Abbreviations', () => {
+        it('Deve retornar abreviações corretas em português para seleções principais', () => {
+          assertEquals(teamAbbr("Brazil"), "BRA", "Abreviação do Brasil incorreta");
+          assertEquals(teamAbbr("South Africa"), "AFS", "Abreviação da África do Sul incorreta");
+          assertEquals(teamAbbr("United States"), "EUA", "Abreviação dos EUA incorreta");
+          assertEquals(teamAbbr("Germany"), "ALE", "Abreviação da Alemanha incorreta");
+          assertEquals(teamAbbr("Netherlands"), "HOL", "Abreviação da Holanda incorreta");
+          assertEquals(teamAbbr("England"), "ING", "Abreviação da Inglaterra incorreta");
+        });
+
+        it('Deve fazer o fallback para as 3 primeiras letras maiúsculas para seleções desconhecidas', () => {
+          assertEquals(teamAbbr("Wakanda"), "WAK");
+          assertEquals(teamAbbr("Atlantis"), "ATL");
+          assertEquals(teamAbbr(""), "???");
+        });
+      });
+
+      // ---- 3. SCORING RULES TESTS ----
+      describe('Scoring Rules (calcGuessResult)', () => {
+        it('Deve retornar 6 pontos e "exact" para acerto de placar exato', () => {
+          const guess = { home_score: 2, away_score: 1 };
+          const game = { home_score: 2, away_score: 1, finished: true };
+          const res = calcGuessResult(guess, game);
+          assertEquals(res.points, 6, "Placar exato deve valer 6 pontos");
+          assertEquals(res.result, 'exact', "Categoria deve ser 'exact'");
+        });
+
+        it('Deve retornar 4 pontos e "winner_goals" para gols do vencedor corretos (acertando vencedor)', () => {
+          const guess = { home_score: 3, away_score: 1 };
+          const game = { home_score: 3, away_score: 2, finished: true };
+          const res = calcGuessResult(guess, game);
+          assertEquals(res.points, 4, "Gols do vencedor corretos deve valer 4 pontos");
+          assertEquals(res.result, 'winner_goals', "Categoria incorreta");
+        });
+
+        it('Deve retornar 3 pontos e "diff_goals" para saldo de gols correto (acertando vencedor)', () => {
+          const guess = { home_score: 2, away_score: 1 };
+          const game = { home_score: 3, away_score: 2, finished: true };
+          const res = calcGuessResult(guess, game);
+          assertEquals(res.points, 3, "Saldo correto deve valer 3 pontos");
+          assertEquals(res.result, 'diff_goals', "Categoria incorreta");
+        });
+
+        it('Deve retornar 2 pontos e "loser_goals" para gols do perdedor corretos (acertando vencedor)', () => {
+          const guess = { home_score: 2, away_score: 1 };
+          const game = { home_score: 3, away_score: 1, finished: true };
+          const res = calcGuessResult(guess, game);
+          assertEquals(res.points, 2, "Gols do perdedor deve valer 2 pontos");
+          assertEquals(res.result, 'loser_goals', "Categoria incorreta");
+        });
+
+        it('Deve retornar 2 pontos e "draw" para empate com placares diferentes', () => {
+          const guess = { home_score: 1, away_score: 1 };
+          const game = { home_score: 2, away_score: 2, finished: true };
+          const res = calcGuessResult(guess, game);
+          assertEquals(res.points, 2, "Empate não exato deve valer 2 pontos");
+          assertEquals(res.result, 'draw', "Categoria incorreta");
+        });
+
+        it('Deve retornar 1 ponto e "winner" para acerto de vencedor apenas (gols/saldo errados)', () => {
+          const guess = { home_score: 2, away_score: 0 };
+          const game = { home_score: 4, away_score: 1, finished: true };
+          const res = calcGuessResult(guess, game);
+          assertEquals(res.points, 1, "Acerto simples de vencedor deve valer 1 ponto");
+          assertEquals(res.result, 'winner', "Categoria incorreta");
+        });
+
+        it('Deve retornar 2 pontos e "loser_goals" para acerto de gols do perdedor mesmo errando o vencedor (exceção)', () => {
+          // Home perdeu de 1 gol. Palpite chutou Home vencendo com 1 gol.
+          const guess = { home_score: 1, away_score: 0 };
+          const game = { home_score: 1, away_score: 2, finished: true };
+          const res = calcGuessResult(guess, game);
+          assertEquals(res.points, 2, "Exceção de perdedor deve conceder 2 pontos");
+          assertEquals(res.result, 'loser_goals', "Categoria incorreta");
+        });
+
+        it('Deve retornar 0 pontos e "wrong" se errou tudo', () => {
+          const guess = { home_score: 2, away_score: 0 };
+          const game = { home_score: 1, away_score: 2, finished: true };
+          const res = calcGuessResult(guess, game);
+          assertEquals(res.points, 0, "Palpite totalmente incorreto deve ser 0 pontos");
+          assertEquals(res.result, 'wrong', "Categoria incorreta");
+        });
+
+        it('Deve retornar 0 pontos e "pending" se o palpite não foi feito', () => {
+          const game = { home_score: 2, away_score: 1, finished: true };
+          const res1 = calcGuessResult(null, game);
+          assertEquals(res1.points, 0);
+          assertEquals(res1.result, 'pending');
+
+          const res2 = calcGuessResult({ home_score: null, away_score: null }, game);
+          assertEquals(res2.points, 0);
+          assertEquals(res2.result, 'pending');
+        });
+
+        it('Deve retornar 0 pontos e "pending" se o jogo não foi finalizado', () => {
+          const guess = { home_score: 2, away_score: 1 };
+          const game = { home_score: 2, away_score: 1, finished: false };
+          const res = calcGuessResult(guess, game);
+          assertEquals(res.points, 0);
+          assertEquals(res.result, 'pending');
+        });
+      });
+
+      // ---- 4. USER TOTAL SCORE CALCULATION ----
+      describe('User Score Accumulator (calcUserScore)', () => {
+        it('Deve acumular corretamente pontos de palpites múltiplos e bônus de campeão', () => {
+          const games = [
+            { id: 1, home_score: 2, away_score: 1, finished: true }, // exact
+            { id: 2, home_score: 1, away_score: 1, finished: true }, // draw (+2)
+            { id: 3, home_score: 0, away_score: 2, finished: true }, // wrong (+0)
+          ];
+          const guesses = [
+            { match_id: 1, home_score: 2, away_score: 1 },
+            { match_id: 2, home_score: 2, away_score: 2 },
+            { match_id: 3, home_score: 1, away_score: 0 },
+          ];
+
+          // Champion match: guess 'Brazil', real 'Brazil' (+15)
+          const score = calcUserScore(guesses, games, 'Brazil', 'Brazil');
+          
+          assertEquals(score.total, 6 + 2 + 0 + 15, "Acúmulo incorreto de moedas");
+          assertEquals(score.exact, 1, "Contagem de exatos incorreta");
+          assertEquals(score.correct, 1, "Contagem de parciais incorreta");
+          assertEquals(score.wrong, 1, "Contagem de errados incorreta");
+          assertEquals(score.championBonus, 15, "Bônus do campeão não contabilizado");
+        });
+
+        it('Não deve conceder bônus do campeão se a aposta estiver errada', () => {
+          const score = calcUserScore([], [], 'Argentina', 'Brazil');
+          assertEquals(score.total, 0);
+          assertEquals(score.championBonus, 0);
+        });
+      });
+
+      // ---- 5. RANKING SORTING LOGIC ----
+      describe('Ranking Sorting Logic (calcRanking)', () => {
+        it('Deve ordenar por moedas (desc), depois por exatos (desc), depois por parciais (desc)', () => {
+          const users = [
+            { id: '1', nickname: 'User1', champion: 'Brazil' },
+            { id: '2', nickname: 'User2', champion: 'Brazil' },
+            { id: '3', nickname: 'User3', champion: 'Argentina' }
+          ];
+
+          const games = [
+            { id: 1, home_score: 2, away_score: 1, finished: true }
+          ];
+
+          const allGuesses = [
+            // User 1: exact score (6 pts)
+            { user_id: '1', match_id: 1, home_score: 2, away_score: 1 },
+            // User 2: winner goals (4 pts)
+            { user_id: '2', match_id: 1, home_score: 3, away_score: 1 },
+            // User 3: exact score (6 pts)
+            { user_id: '3', match_id: 1, home_score: 2, away_score: 1 }
+          ];
+
+          // Real Champion is Brazil. User 1 & 2 get +15. User 3 gets 0.
+          // Totals:
+          // User 1: 6 + 15 = 21 pts (1 exact)
+          // User 2: 4 + 15 = 19 pts (0 exact)
+          // User 3: 6 + 0 = 6 pts (1 exact)
+          
+          const ranking = calcRanking(users, allGuesses, games, 'Brazil');
+          
+          assertEquals(ranking[0].id, '1', "1º colocado deve ser o User1 (21 pts)");
+          assertEquals(ranking[1].id, '2', "2º colocado deve ser o User2 (19 pts)");
+          assertEquals(ranking[2].id, '3', "3º colocado deve ser o User3 (6 pts)");
+        });
+
+        it('Deve desempatar por placares exatos quando as moedas forem iguais', () => {
+          const users = [
+            { id: '1', nickname: 'User1' },
+            { id: '2', nickname: 'User2' }
+          ];
+
+          const games = [
+            { id: 1, home_score: 2, away_score: 1, finished: true },
+            { id: 2, home_score: 1, away_score: 1, finished: true },
+            { id: 3, home_score: 3, away_score: 0, finished: true }
+          ];
+
+          const allGuesses = [
+            // User 1: 1 exact (6 pts) + 1 draw (2 pts) = 8 pts
+            { user_id: '1', match_id: 1, home_score: 2, away_score: 1 },
+            { user_id: '1', match_id: 2, home_score: 2, away_score: 2 },
+            
+            // User 2: 2 draw (4 pts) + 2 draw (4 pts) = 8 pts
+            { user_id: '2', match_id: 2, home_score: 2, away_score: 2 },
+            { user_id: '2', match_id: 3, home_score: 2, away_score: 2 }
+          ];
+
+          const ranking = calcRanking(users, allGuesses, games, '');
+          
+          assertEquals(ranking[0].id, '1', "User1 deve ficar na frente por ter mais placares exatos (1 vs 0)");
+        });
+      });
+
+      // ---- 6. MATCH STATE HELPERS ----
+      describe('Match State Helpers', () => {
+        it('Deve detectar corretamente se o jogo terminou', () => {
+          assert(isMatchFinished({ finished: 'TRUE' }), "finished: 'TRUE' deve ser true");
+          assert(isMatchFinished({ finished: true }), "finished: true deve ser true");
+          assert(isMatchFinished({ time_elapsed: 'finished' }), "time_elapsed: 'finished' deve ser true");
+          assert(!isMatchFinished({ finished: 'FALSE', time_elapsed: 'notstarted' }), "jogo não iniciado deve ser false");
+        });
+
+        it('Deve detectar corretamente se o jogo está acontecendo ao vivo', () => {
+          assert(isMatchLive({ finished: 'FALSE', time_elapsed: '45' }), "jogo em andamento deve ser live");
+          assert(!isMatchLive({ finished: 'TRUE', time_elapsed: 'finished' }), "jogo finalizado não é live");
+          assert(!isMatchLive({ finished: 'FALSE', time_elapsed: 'notstarted' }), "jogo não iniciado não é live");
+        });
+      });
+
+    };
+  </script>
+
+</body>
+</html>
