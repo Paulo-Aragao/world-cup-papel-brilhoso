@@ -535,7 +535,7 @@ function renderMatchCard(game) {
     ? '<span class="match-status-badge badge-live">⚡ AO VIVO</span>'
     : finished
       ? '<span class="match-status-badge badge-done">ENCERRADO</span>'
-      : `<span class="match-status-badge badge-soon">${formatMatchTime(game.local_date)}</span>`;
+      : `<span class="match-status-badge badge-soon">${formatMatchTime(game.local_date, game.stadium_id)}</span>`;
 
   const cardClass = `match-card ${live ? 'live' : ''} ${finished ? 'finished' : ''}`;
 
@@ -704,7 +704,7 @@ function renderGuessesForPhase(phase) {
   // Bind input events
   container.querySelectorAll('.guess-score-input').forEach(input => {
     input.addEventListener('change', () => {
-      document.getElementById('save-status').textContent = '● Alterações não salvas';
+      updateSaveStatus();
     });
     input.addEventListener('input', () => {
       input.value = input.value.replace(/[^0-9]/g, '').slice(0, 2);
@@ -742,8 +742,13 @@ function renderGuessesForPhase(phase) {
 
         showToast('Palpite salvo com sucesso! 🎯', 'success');
         
-        // Refresh this phase view
-        renderGuessesForPhase(state.currentPhase);
+        btn.textContent = '✓';
+        updateSaveStatus();
+
+        setTimeout(() => {
+          btn.textContent = '💾';
+          btn.disabled = false;
+        }, 1500);
       } catch (err) {
         showToast('❌ Erro ao salvar: ' + err.message, 'error');
         btn.disabled = false;
@@ -751,6 +756,45 @@ function renderGuessesForPhase(phase) {
       }
     };
   });
+
+  updateSaveStatus();
+}
+
+function checkUnsavedChanges() {
+  const container = document.getElementById('guesses-container');
+  if (!container) return false;
+  const inputs = container.querySelectorAll('.guess-score-input');
+  for (const input of inputs) {
+    const matchId = parseInt(input.dataset.match);
+    const side = input.dataset.side;
+    const currentVal = input.value.trim();
+    
+    const savedObj = state.myGuesses[matchId];
+    const savedVal = savedObj ? (side === 'home' ? savedObj.home_score : savedObj.away_score) : null;
+    
+    if (currentVal !== '') {
+      if (savedVal === null || String(currentVal) !== String(savedVal)) {
+        return true;
+      }
+    } else {
+      if (savedVal !== null) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function updateSaveStatus() {
+  const el = document.getElementById('save-status');
+  if (!el) return;
+  if (checkUnsavedChanges()) {
+    el.textContent = '● Alterações não salvas';
+    el.style.color = 'var(--accent-red)';
+  } else {
+    el.textContent = '✓ Todos os palpites salvos';
+    el.style.color = 'var(--accent-green)';
+  }
 }
 
 function renderGuessRow(game, isToday = false) {
@@ -835,7 +879,7 @@ function renderGuessRow(game, isToday = false) {
       </div>`;
   }
 
-  const matchInfo = `${game.type === 'group' ? 'Grupo ' + game.group + ' · ' : phaseLabelPt(game.type) + ' · '}${formatMatchDate(game.local_date)}`;
+  const matchInfo = `${game.type === 'group' ? 'Grupo ' + game.group + ' · ' : phaseLabelPt(game.type) + ' · '}${formatMatchDate(game.local_date, game.stadium_id)}`;
 
   return `
     <div class="${rowClass}" data-match-id="${matchId}">
@@ -884,25 +928,49 @@ function bindSaveAllBtn() {
         const awayVal = awayInput.value;
 
         if (homeVal !== '' && awayVal !== '') {
-          toSave.push({
-            match_id: matchId,
-            home_score: parseInt(homeVal),
-            away_score: parseInt(awayVal),
-          });
-          state.myGuesses[matchId] = { match_id: matchId, home_score: parseInt(homeVal), away_score: parseInt(awayVal) };
+          // Check if it's actually unsaved before adding to save list
+          const savedObj = state.myGuesses[matchId];
+          const homeUnsaved = savedObj ? savedObj.home_score !== parseInt(homeVal) : true;
+          const awayUnsaved = savedObj ? savedObj.away_score !== parseInt(awayVal) : true;
+
+          if (homeUnsaved || awayUnsaved) {
+            toSave.push({
+              match_id: matchId,
+              home_score: parseInt(homeVal),
+              away_score: parseInt(awayVal),
+            });
+            state.myGuesses[matchId] = { match_id: matchId, home_score: parseInt(homeVal), away_score: parseInt(awayVal) };
+          }
         }
       });
 
       if (toSave.length === 0) {
         showToast('Nenhum palpite novo para salvar', 'info');
+        btn.disabled = false;
+        btn.textContent = '💾 SALVAR TODOS OS PALPITES';
         return;
       }
 
       await dbSaveGuesses(state.currentUser.id, toSave);
       showToast(`✅ ${toSave.length} palpites salvos!`, 'success');
-      document.getElementById('save-status').textContent = `✅ Salvo às ${new Date().toLocaleTimeString('pt-BR')}`;
 
-      renderGuessesForPhase(state.currentPhase);
+      // Update individual buttons of saved rows to show checkmark
+      toSave.forEach(g => {
+        const row = container.querySelector(`.guess-row[data-match-id="${g.match_id}"]`);
+        if (row) {
+          const rowBtn = row.querySelector('.btn-save-row');
+          if (rowBtn) {
+            rowBtn.textContent = '✓';
+            rowBtn.disabled = true;
+            setTimeout(() => {
+              rowBtn.textContent = '💾';
+              rowBtn.disabled = false;
+            }, 1500);
+          }
+        }
+      });
+
+      updateSaveStatus();
     } catch (err) {
       showToast('❌ Erro ao salvar: ' + err.message, 'error');
     } finally {
