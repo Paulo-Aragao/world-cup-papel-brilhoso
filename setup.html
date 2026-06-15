@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Setup — Bolão Copa 2026</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { background:#07071a; color:#e8e8ff; font-family:monospace; padding:2rem; }
+    h1 { color: #f5c518; margin-bottom:1rem; }
+    button { background:#f5c518; color:#000; border:none; padding:1rem 2rem; font-size:1rem; cursor:pointer; margin-top:1rem; font-family:monospace; font-weight:bold; }
+    button:disabled { opacity:0.5; cursor:not-allowed; }
+    pre { background:#12122e; padding:1rem; margin:1rem 0; border:1px solid #2a2a5a; white-space:pre-wrap; max-height:400px; overflow:auto; font-size:0.85rem; }
+    .ok { color: #2ecc71; }
+    .err { color: #e63946; }
+    .info { color: #3d9be9; }
+  </style>
+</head>
+<body>
+  <h1>🏆 Bolão Copa 2026 — Setup do Banco</h1>
+  <p>Este script cria as tabelas necessárias no Supabase.</p>
+  <p style="color:#f5c518">⚠️ Execute apenas uma vez. Abra o console do browser para ver detalhes.</p>
+
+  <button id="btn-setup" onclick="runSetup()">▶ CRIAR TABELAS</button>
+  <button id="btn-test" onclick="runTest()" style="background:#3d9be9;color:#fff;margin-left:1rem">🔍 TESTAR CONEXÃO</button>
+
+  <pre id="log">Aguardando...</pre>
+
+  <script>
+    const SUPABASE_URL = 'https://ehngxartzdjpdkcekymd.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_XbxbjWxjSA1P5dr-bubhpg_rS24BULs';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const logEl = document.getElementById('log');
+    function log(msg, type='info') {
+      const line = document.createElement('div');
+      line.className = type;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    async function runTest() {
+      logEl.innerHTML = '';
+      log('Testando conexão com Supabase...');
+      try {
+        // Try to query users table
+        const { data, error } = await sb.from('users').select('count').limit(1);
+        if (error) {
+          if (error.code === 'PGRST205' || error.message.includes('does not exist') || error.message.includes('schema cache')) {
+            log('Tabelas ainda não existem. Execute "CRIAR TABELAS" primeiro.', 'err');
+          } else {
+            log('Erro: ' + JSON.stringify(error), 'err');
+          }
+        } else {
+          log('✅ Tabela "users" OK!', 'ok');
+        }
+
+        const { data: d2, error: e2 } = await sb.from('guesses').select('count').limit(1);
+        if (e2) {
+          log('Tabela "guesses" não encontrada: ' + e2.message, 'err');
+        } else {
+          log('✅ Tabela "guesses" OK!', 'ok');
+          log('🎉 Tudo pronto! Pode fechar esta página e usar o app.', 'ok');
+        }
+      } catch (e) {
+        log('Erro inesperado: ' + e.message, 'err');
+      }
+    }
+
+    async function runSetup() {
+      logEl.innerHTML = '';
+      document.getElementById('btn-setup').disabled = true;
+      log('Iniciando setup...', 'info');
+
+      // We'll use Supabase's rpc to run SQL if available
+      // If not, provide instructions
+      log('Tentando criar tabelas via RPC...', 'info');
+
+      try {
+        // Try exec_sql RPC
+        const { data, error } = await sb.rpc('exec_sql', {
+          sql: `SELECT 1`
+        });
+
+        if (error) {
+          log('RPC exec_sql não disponível. Veja instruções abaixo.', 'err');
+          showManualInstructions();
+        } else {
+          log('RPC disponível! Criando tabelas...', 'ok');
+          await createTables();
+        }
+      } catch(e) {
+        log('RPC não disponível. Siga as instruções manuais abaixo:', 'err');
+        showManualInstructions();
+      }
+
+      document.getElementById('btn-setup').disabled = false;
+    }
+
+    function showManualInstructions() {
+      const instructions = document.createElement('div');
+      instructions.style.cssText = 'background:#1a1a3e;border:2px solid #f5c518;padding:1.5rem;margin-top:1rem;';
+      instructions.innerHTML = `
+        <h2 style="color:#f5c518;margin-bottom:1rem">📋 Setup Manual (1 minuto)</h2>
+        <p style="margin-bottom:0.5rem">Abra o <strong>SQL Editor</strong> do Supabase:</p>
+        <p style="margin-bottom:1rem"><a href="https://supabase.com/dashboard/project/ehngxartzdjpdkcekymd/sql/new" target="_blank" style="color:#3d9be9">👉 Clique aqui para abrir o SQL Editor</a></p>
+        <p style="margin-bottom:0.5rem">Cole e execute este SQL:</p>
+        <pre style="background:#07071a;max-height:none;font-size:0.75rem;cursor:text" id="sql-code">
+-- 1. Tabela de usuários
+CREATE TABLE IF NOT EXISTS public.users (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nickname    TEXT UNIQUE NOT NULL,
+  avatar_seed TEXT DEFAULT '',
+  champion    TEXT DEFAULT '',
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- 2. Tabela de palpites
+CREATE TABLE IF NOT EXISTS public.guesses (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  match_id    INTEGER NOT NULL,
+  home_score  INTEGER,
+  away_score  INTEGER,
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  updated_at  TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, match_id)
+);
+
+-- 3. Habilitar Realtime
+ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.guesses;
+
+-- 4. RLS Policies - users
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can read users" ON public.users FOR SELECT USING (true);
+CREATE POLICY "Anyone can insert users" ON public.users FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update users" ON public.users FOR UPDATE USING (true);
+
+-- 5. RLS Policies - guesses
+ALTER TABLE public.guesses ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can read guesses" ON public.guesses FOR SELECT USING (true);
+CREATE POLICY "Anyone can insert guesses" ON public.guesses FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update guesses" ON public.guesses FOR UPDATE USING (true);
+CREATE POLICY "Anyone can delete guesses" ON public.guesses FOR DELETE USING (true);
+
+-- 6. Trigger updated_at
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN NEW.updated_at = now(); RETURN NEW; END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER guesses_updated_at
+  BEFORE UPDATE ON public.guesses
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+        </pre>
+        <button onclick="copySQL()" style="margin-top:0.5rem;background:#3d9be9;color:#fff">📋 COPIAR SQL</button>
+        <p style="margin-top:1rem;color:#2ecc71">Após executar, clique em "TESTAR CONEXÃO" acima ✅</p>
+      `;
+      document.body.appendChild(instructions);
+    }
+
+    function copySQL() {
+      const sql = document.getElementById('sql-code').textContent;
+      navigator.clipboard.writeText(sql.trim()).then(() => {
+        log('SQL copiado para o clipboard!', 'ok');
+      });
+    }
+
+    async function createTables() {
+      // This would only work if exec_sql RPC is available
+      const sqls = [
+        `CREATE TABLE IF NOT EXISTS public.users (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), nickname TEXT UNIQUE NOT NULL, avatar_seed TEXT DEFAULT '', champion TEXT DEFAULT '', created_at TIMESTAMPTZ DEFAULT now())`,
+        `CREATE TABLE IF NOT EXISTS public.guesses (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE, match_id INTEGER NOT NULL, home_score INTEGER, away_score INTEGER, created_at TIMESTAMPTZ DEFAULT now(), updated_at TIMESTAMPTZ DEFAULT now(), UNIQUE(user_id, match_id))`,
+      ];
+
+      for (const sql of sqls) {
+        const { error } = await sb.rpc('exec_sql', { sql });
+        if (error) {
+          log('Erro: ' + error.message, 'err');
+        } else {
+          log('OK: ' + sql.substring(0, 50) + '...', 'ok');
+        }
+      }
+    }
+  </script>
+</body>
+</html>

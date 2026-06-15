@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Criador de Usuários 🏆</title>
+
+  <!-- Google Fonts: Pixel Art Style -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --bg-dark:    #07071a;
+      --bg-mid:     #0d0d2b;
+      --bg-card:    #12122e;
+      --bg-card2:   #1a1a3e;
+      --accent-gold:  #f5c518;
+      --accent-blue:  #3d9be9;
+      --accent-red:   #e63946;
+      --accent-green: #2ecc71;
+      --text-main:  #e8e8ff;
+      --text-dim:   #7777aa;
+      --text-muted: #444466;
+      --font-pixel: 'Press Start 2P', monospace;
+      --font-score: 'VT323', monospace;
+      --font-ui:    'Inter', sans-serif;
+    }
+
+    body {
+      background: var(--bg-dark) url('../bg.png') no-repeat center center fixed;
+      background-size: cover;
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Pixel scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255,255,255,0.015) 2px,
+        rgba(255,255,255,0.015) 4px
+      );
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .admin-container {
+      max-width: 800px;
+      width: 100%;
+      background: var(--bg-card);
+      border: 2px solid #2a2a5a;
+      box-shadow: 6px 6px 0px #000;
+      padding: 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .pixel-title {
+      font-family: var(--font-pixel);
+      font-size: 1.2rem;
+      color: var(--accent-gold);
+      text-align: center;
+      margin-bottom: 2rem;
+      text-shadow: 3px 3px 0px #000;
+      letter-spacing: 1px;
+      line-height: 1.6;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 600px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .pixel-label {
+      font-family: var(--font-pixel);
+      font-size: 0.5rem;
+      color: var(--accent-blue);
+      letter-spacing: 1px;
+    }
+
+    .pixel-input {
+      background: var(--bg-card2);
+      border: 2px solid var(--accent-blue);
+      color: var(--text-main);
+      font-family: var(--font-pixel);
+      font-size: 0.75rem;
+      padding: 0.75rem;
+      outline: none;
+      box-shadow: 3px 3px 0px #000;
+    }
+
+    .pixel-input:focus {
+      border-color: var(--accent-gold);
+    }
+
+    .pixel-btn {
+      font-family: var(--font-pixel);
+      font-size: 0.65rem;
+      padding: 0.9rem;
+      border: none;
+      cursor: pointer;
+      background: var(--accent-green);
+      color: #000;
+      box-shadow: 4px 4px 0px #1a8a4a;
+      transition: transform 0.1s, box-shadow 0.1s;
+      width: 100%;
+      text-transform: uppercase;
+      margin-top: 1rem;
+    }
+
+    .pixel-btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 2px 2px 0px #1a8a4a;
+    }
+
+    .pixel-btn.btn-delete {
+      background: var(--accent-red);
+      box-shadow: 2px 2px 0px #8a1a24;
+      padding: 0.35rem 0.6rem;
+      font-size: 0.45rem;
+      color: #fff;
+      margin-top: 0;
+      width: auto;
+    }
+
+    .pixel-btn.btn-delete:active {
+      transform: translate(1px, 1px);
+      box-shadow: 1px 1px 0px #8a1a24;
+    }
+
+    .status-msg {
+      font-family: var(--font-pixel);
+      font-size: 0.5rem;
+      padding: 0.75rem;
+      margin-top: 1rem;
+      text-align: center;
+    }
+
+    .status-msg.success {
+      background: rgba(46, 204, 113, 0.1);
+      border: 1px solid var(--accent-green);
+      color: var(--accent-green);
+    }
+
+    .status-msg.error {
+      background: rgba(230, 57, 70, 0.1);
+      border: 1px solid var(--accent-red);
+      color: var(--accent-red);
+    }
+
+    .users-section {
+      margin-top: 3rem;
+      border-top: 2px solid #2a2a5a;
+      padding-top: 2rem;
+    }
+
+    .section-title {
+      font-family: var(--font-pixel);
+      font-size: 0.8rem;
+      color: var(--accent-blue);
+      margin-bottom: 1.5rem;
+      letter-spacing: 1px;
+    }
+
+    .user-table-wrapper {
+      overflow-x: auto;
+    }
+
+    .user-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .user-table th {
+      font-family: var(--font-pixel);
+      font-size: 0.45rem;
+      color: var(--text-dim);
+      text-align: left;
+      padding: 0.75rem;
+      border-bottom: 2px solid #2a2a5a;
+    }
+
+    .user-table td {
+      padding: 0.75rem;
+      border-bottom: 1px solid rgba(42, 42, 90, 0.5);
+    }
+
+    .user-table tr:hover td {
+      background: rgba(255,255,255,0.02);
+    }
+
+    .avatar-cell {
+      font-size: 1.2rem;
+      width: 40px;
+    }
+
+    .username-cell {
+      font-family: var(--font-pixel);
+      font-size: 0.55rem;
+      color: var(--accent-gold);
+    }
+
+    .nickname-cell {
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="admin-container">
+    <h1 class="pixel-title">🏆 PAINEL ADMIN<br>CRIADOR DE USUÁRIOS</h1>
+
+    <div class="field-group">
+      <div class="form-grid">
+        <div class="field-group">
+          <label class="pixel-label" for="username">ID de Acesso (Login):</label>
+          <input type="text" id="username" class="pixel-input" placeholder="ex: leo123" maxlength="20" autocomplete="off">
+        </div>
+        <div class="field-group">
+          <label class="pixel-label" for="nickname">Nome de Exibição (Nick):</label>
+          <input type="text" id="nickname" class="pixel-input" placeholder="ex: Leonardo" maxlength="20" autocomplete="off">
+        </div>
+      </div>
+      <button id="btn-create" class="pixel-btn">➕ Criar Novo Jogador</button>
+    </div>
+
+    <div id="status" class="status-msg" style="display: none;"></div>
+
+    <div class="users-section">
+      <h2 class="section-title">👥 Jogadores Cadastrados</h2>
+      <div class="user-table-wrapper">
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th>Avatar</th>
+              <th>ID (Login)</th>
+              <th>Apelido</th>
+              <th>Campeão</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="user-rows">
+            <tr>
+              <td colspan="5" style="text-align: center; color: var(--text-dim);">Carregando usuários...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Supabase config
+    const SUPABASE_URL = 'https://ehngxartzdjpdkcekymd.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_XbxbjWxjSA1P5dr-bubhpg_rS24BULs';
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // DOM Elements
+    const usernameInput = document.getElementById('username');
+    const nicknameInput = document.getElementById('nickname');
+    const btnCreate = document.getElementById('btn-create');
+    const statusDiv = document.getElementById('status');
+    const userRows = document.getElementById('user-rows');
+
+    // Load users on start
+    loadUsers();
+
+    btnCreate.addEventListener('click', async () => {
+      const username = usernameInput.value.trim().toLowerCase();
+      const nickname = nicknameInput.value.trim();
+
+      hideStatus();
+
+      if (!username || username.length < 2) {
+        showStatus('ID de acesso deve ter pelo menos 2 caracteres!', 'error');
+        return;
+      }
+      if (!nickname || nickname.length < 2) {
+        showStatus('Nome de exibição deve ter pelo menos 2 caracteres!', 'error');
+        return;
+      }
+      if (!/^[a-z0-9_\-]+$/.test(username)) {
+        showStatus('Use apenas minúsculas, números, _ ou - no ID!', 'error');
+        return;
+      }
+
+      btnCreate.disabled = true;
+      btnCreate.textContent = 'Criando...';
+
+      const avatarEmojis = ['⚽','🏆','🥅','🦁','🐯','🦊','🐼','🐧','🦅','🐉','🦄','🐻'];
+      const avatar = avatarEmojis[Math.floor(Math.random() * avatarEmojis.length)];
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('users')
+          .insert({ username, nickname, avatar_seed: avatar })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        showStatus(`Jogador ${nickname} (${username}) criado com sucesso!`, 'success');
+        usernameInput.value = '';
+        nicknameInput.value = '';
+        loadUsers();
+      } catch (err) {
+        showStatus('Erro ao criar usuário: ' + (err.message || 'ID já em uso.'), 'error');
+      } finally {
+        btnCreate.disabled = false;
+        btnCreate.textContent = '➕ Criar Novo Jogador';
+      }
+    });
+
+    async function loadUsers() {
+      try {
+        const { data: users, error } = await supabaseClient
+          .from('users')
+          .select('*')
+          .order('nickname', { ascending: true });
+
+        if (error) throw error;
+
+        if (users.length === 0) {
+          userRows.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-dim);">Nenhum usuário cadastrado.</td></tr>';
+          return;
+        }
+
+        userRows.innerHTML = users.map(user => {
+          return `
+            <tr>
+              <td class="avatar-cell">${user.avatar_seed || '⚽'}</td>
+              <td class="username-cell">${escapeHtml(user.username)}</td>
+              <td class="nickname-cell">${escapeHtml(user.nickname)}</td>
+              <td>${user.champion ? '🏆 ' + escapeHtml(user.champion) : '—'}</td>
+              <td>
+                <button class="pixel-btn btn-delete" onclick="deleteUser('${user.id}', '${escapeHtml(user.nickname)}')">✕ Excluir</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        userRows.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--accent-red);">Erro ao carregar: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function deleteUser(id, nickname) {
+      if (!confirm(`Tem certeza que deseja excluir o jogador "${nickname}"? Todos os seus palpites serão deletados permanentemente!`)) {
+        return;
+      }
+
+      hideStatus();
+
+      try {
+        const { error } = await supabaseClient
+          .from('users')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        showStatus(`Jogador ${nickname} excluído.`, 'success');
+        loadUsers();
+      } catch (err) {
+        showStatus('Erro ao excluir: ' + err.message, 'error');
+      }
+    }
+
+    function showStatus(msg, type) {
+      statusDiv.textContent = msg;
+      statusDiv.className = `status-msg ${type}`;
+      statusDiv.style.display = 'block';
+    }
+
+    function hideStatus() {
+      statusDiv.style.display = 'none';
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+  </script>
+
+</body>
+</html>

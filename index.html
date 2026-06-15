@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bolão Copa 2026 🏆</title>
+  <meta name="description" content="Bolão da Copa do Mundo 2026 com palpites em tempo real para você e seus amigos!" />
+
+  <!-- Google Fonts: Pixel Art Style -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ========== PIXEL PARTICLES BG ========== -->
+  <div id="pixel-bg"></div>
+
+  <!-- ========== SCREEN: LOGIN ========== -->
+  <div id="screen-login" class="screen active">
+    <div class="login-container">
+      <div class="trophy-pixel">🏆</div>
+      <h1 class="pixel-title">BOLÃO<br><span class="title-copa">COPA 2026</span></h1>
+      <p class="login-subtitle">INSERT COIN TO PLAY</p>
+      <div class="login-blink">▼</div>
+
+      <div class="login-form">
+        <label class="pixel-label" for="input-nick">ID DE ACESSO:</label>
+        <input type="text" id="input-nick" class="pixel-input" maxlength="20"
+               placeholder="ex: leo123" autocomplete="off" spellcheck="false" />
+        <div id="nick-error" class="nick-error hidden"></div>
+        <button id="btn-login" class="pixel-btn btn-primary">
+          <span>▶ ENTRAR</span>
+        </button>
+      </div>
+
+      <div class="login-footer">
+        <span class="pixel-text-sm">🌎 EUA · MÉXICO · CANADA · 2026</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== MAIN APP ========== -->
+  <div id="app" class="hidden">
+
+    <!-- NAV BAR -->
+    <nav id="main-nav">
+      <div class="nav-brand">
+        <span class="nav-trophy">⚽</span>
+        <span class="nav-title pixel-font">COPA 2026</span>
+      </div>
+      <div class="nav-links" id="nav-links">
+        <a href="#dashboard" class="nav-link" data-page="dashboard" id="nav-dashboard">
+          <span class="nav-icon">🏠</span><span class="nav-text">INÍCIO</span>
+        </a>
+        <a href="#palpites" class="nav-link" data-page="palpites" id="nav-palpites">
+          <span class="nav-icon">✏️</span><span class="nav-text">PALPITES</span>
+        </a>
+        <a href="#jogos" class="nav-link" data-page="jogos" id="nav-jogos">
+          <span class="nav-icon">⚡</span><span class="nav-text">JOGOS</span>
+        </a>
+        <a href="#ranking" class="nav-link" data-page="ranking" id="nav-ranking">
+          <span class="nav-icon">🏅</span><span class="nav-text">RANKING</span>
+        </a>
+        <a href="#grupos" class="nav-link" data-page="grupos" id="nav-grupos">
+          <span class="nav-icon">📊</span><span class="nav-text">GRUPOS</span>
+        </a>
+      </div>
+      <div class="nav-user">
+        <span class="user-avatar" id="nav-avatar"></span>
+        <span class="pixel-font nav-nick" id="nav-nick-display">---</span>
+        <button id="btn-logout" class="btn-logout" title="Sair">✕</button>
+      </div>
+      <button id="nav-hamburger" class="nav-hamburger" aria-label="Menu">☰</button>
+    </nav>
+
+    <!-- MOBILE MENU OVERLAY -->
+    <div id="mobile-menu" class="mobile-menu hidden">
+      <button id="mobile-close" class="mobile-close">✕</button>
+      <a href="#dashboard" class="mobile-nav-link" data-page="dashboard">🏠 INÍCIO</a>
+      <a href="#palpites" class="mobile-nav-link" data-page="palpites">✏️ PALPITES</a>
+      <a href="#jogos" class="mobile-nav-link" data-page="jogos">⚡ JOGOS AO VIVO</a>
+      <a href="#ranking" class="mobile-nav-link" data-page="ranking">🏅 RANKING</a>
+      <a href="#grupos" class="mobile-nav-link" data-page="grupos">📊 GRUPOS</a>
+    </div>
+
+    <!-- PAGES CONTAINER -->
+    <main id="pages">
+
+      <!-- ===== PAGE: DASHBOARD ===== -->
+      <div id="page-dashboard" class="page">
+        <div class="page-header">
+          <h2 class="page-title pixel-font">DASHBOARD</h2>
+          <div class="live-indicator" id="live-indicator">
+            <span class="live-dot"></span> AO VIVO
+          </div>
+        </div>
+
+        <!-- My Score Card -->
+        <div class="dash-grid">
+          <div class="card card-score pixel-card">
+            <div class="card-label pixel-font-sm">MINHAS MOEDAS 🪙</div>
+            <div class="score-big" id="my-score">0</div>
+            <div class="score-rank" id="my-rank">— POS. —</div>
+            <div class="score-breakdown" id="my-breakdown">
+              <span class="score-exact">0 exatos</span>
+              <span class="score-result">0 resultados</span>
+            </div>
+          </div>
+
+          <!-- Next Game Card -->
+          <div class="card card-next pixel-card">
+            <div class="card-label pixel-font-sm">PRÓXIMO JOGO</div>
+            <div id="next-match-info">
+              <div class="next-match-teams" id="next-teams">Carregando...</div>
+              <div class="next-match-time" id="next-time">--:--</div>
+              <div class="next-match-group" id="next-group">Grupo --</div>
+            </div>
+          </div>
+
+          <!-- Champion Guess Card -->
+          <div class="card card-champion pixel-card">
+            <div class="card-label pixel-font-sm">MEU CAMPEÃO 🏆</div>
+            <div class="champion-display" id="champion-display">
+              <select id="champion-select" class="pixel-select">
+                <option value="">Escolha o campeão...</option>
+              </select>
+              <button id="btn-save-champion" class="pixel-btn btn-small btn-gold">SALVAR</button>
+            </div>
+            <div class="champion-saved hidden" id="champion-saved">
+              <span id="champion-flag"></span>
+              <span id="champion-name" class="pixel-font-sm">---</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Today's Matches -->
+        <div class="section-title pixel-font">📅 JOGOS DE HOJE</div>
+        <div id="today-matches" class="matches-list">
+          <div class="loading-pixel">Carregando jogos...</div>
+        </div>
+
+        <!-- Top 5 Ranking -->
+        <div class="section-title pixel-font">🏅 TOP 5</div>
+        <div id="top5-ranking" class="top5-list">
+          <div class="loading-pixel">Calculando ranking...</div>
+        </div>
+      </div>
+
+      <!-- ===== PAGE: PALPITES ===== -->
+      <div id="page-palpites" class="page">
+        <div class="page-header">
+          <h2 class="page-title pixel-font">PALPITES</h2>
+          <div class="save-status" id="save-status"></div>
+        </div>
+
+        <!-- Phase Tabs -->
+        <div class="phase-tabs" id="phase-tabs">
+          <button class="phase-tab active" data-phase="group">GRUPOS</button>
+          <button class="phase-tab" data-phase="r32">2ª FASE</button>
+          <button class="phase-tab" data-phase="r16">OITAVAS</button>
+          <button class="phase-tab" data-phase="qf">QUARTAS</button>
+          <button class="phase-tab" data-phase="sf">SEMI</button>
+          <button class="phase-tab" data-phase="final">FINAL</button>
+        </div>
+
+        <!-- Matches Grid -->
+        <div id="guesses-container" class="guesses-container">
+          <div class="loading-pixel">Carregando palpites...</div>
+        </div>
+
+        <!-- Save All Button -->
+        <div class="save-bar">
+          <button id="btn-save-all" class="pixel-btn btn-primary btn-large">
+            💾 SALVAR TODOS OS PALPITES
+          </button>
+        </div>
+      </div>
+
+      <!-- ===== PAGE: JOGOS ===== -->
+      <div id="page-jogos" class="page">
+        <div class="page-header">
+          <h2 class="page-title pixel-font">JOGOS</h2>
+          <div class="refresh-info" id="refresh-info">🔄 Atualiza em <span id="refresh-countdown">60</span>s</div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-bar">
+          <button class="filter-btn active" data-filter="all">TODOS</button>
+          <button class="filter-btn" data-filter="live">⚡ AO VIVO</button>
+          <button class="filter-btn" data-filter="today">HOJE</button>
+          <button class="filter-btn" data-filter="finished">ENCERRADOS</button>
+        </div>
+
+        <div id="jogos-container" class="jogos-container">
+          <div class="loading-pixel">Carregando jogos...</div>
+        </div>
+      </div>
+
+      <!-- ===== PAGE: RANKING ===== -->
+      <div id="page-ranking" class="page">
+        <div class="page-header">
+          <h2 class="page-title pixel-font">RANKING</h2>
+          <div class="pixel-text-sm" id="ranking-updated">Atualização em tempo real</div>
+        </div>
+
+        <div id="ranking-container" class="ranking-container">
+          <div class="loading-pixel">Calculando ranking...</div>
+        </div>
+      </div>
+
+      <!-- ===== PAGE: GRUPOS ===== -->
+      <div id="page-grupos" class="page">
+        <div class="page-header">
+          <h2 class="page-title pixel-font">GRUPOS</h2>
+        </div>
+
+        <div id="grupos-grid" class="grupos-grid">
+          <div class="loading-pixel">Carregando grupos...</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ========== TOAST NOTIFICATIONS ========== -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ========== LOADING OVERLAY ========== -->
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="loading-ball">⚽</div>
+    <div class="pixel-font-sm loading-text">CARREGANDO...</div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="supabase-client.js"></script>
+  <script src="api.js"></script>
+  <script src="scoring.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
