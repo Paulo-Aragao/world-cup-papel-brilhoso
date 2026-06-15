@@ -357,7 +357,37 @@ async function navigateTo(page) {
 
   // Render page content
   await renderPage(page);
-// ============================================
+}
+
+async function renderPage(page) {
+  switch (page) {
+    case 'ranking':
+      await loadAllGuesses();
+      recomputeRanking();
+      updateNavScore();
+      renderRanking();
+      break;
+    case 'palpites':
+      renderPalpites();
+      break;
+    case 'jogos':
+      renderJogos();
+      bindManualRefreshBtn();
+      break;
+    case 'grupos':
+      await loadGroups();
+      renderGrupos();
+      break;
+  }
+}
+
+function logout() {
+  localStorage.removeItem('bolaoCopa2026_username');
+  localStorage.removeItem('bolaoCopa2026_nick');
+  location.reload();
+}
+
+// ============================================================
 // RENDER: CHAMPION CARD
 // ============================================
 function renderChampionCard() {
