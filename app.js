@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function checkSession() {
   const saved = localStorage.getItem('bolaoCopa2026_username') || localStorage.getItem('bolaoCopa2026_nick');
   if (saved) {
-    loginWithUsername(saved);
+    loginWithUsername(saved.toLowerCase());
   }
 }
 
@@ -72,12 +72,15 @@ function bindLoginEvents() {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') attemptLogin();
   });
+  input.addEventListener('input', () => {
+    input.value = input.value.toLowerCase();
+  });
 }
 
 async function attemptLogin() {
   const input = document.getElementById('input-nick');
   const errorEl = document.getElementById('nick-error');
-  const username = input.value.trim();
+  const username = input.value.trim().toLowerCase();
 
   errorEl.classList.add('hidden');
 

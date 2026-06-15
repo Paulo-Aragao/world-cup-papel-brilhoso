@@ -293,6 +293,10 @@
     // Load users on start
     loadUsers();
 
+    usernameInput.addEventListener('input', () => {
+      usernameInput.value = usernameInput.value.toLowerCase();
+    });
+
     btnCreate.addEventListener('click', async () => {
       const username = usernameInput.value.trim().toLowerCase();
       const nickname = nicknameInput.value.trim();
