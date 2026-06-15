@@ -1110,26 +1110,47 @@ body {
   align-items: center;
   gap: 1rem;
   background-color: var(--bg-card);
-  background-image: linear-gradient(135deg, rgba(18, 18, 46, 1) 35%, rgba(18, 18, 46, 0.85) 70%, rgba(18, 18, 46, 0.2) 100%), var(--row-flag, none);
-  background-size: cover;
-  background-position: right center;
-  background-repeat: no-repeat;
   border: 2px solid #2a2a5a;
   padding: 0.9rem 1.25rem;
   box-shadow: 3px 3px 0px #000;
   transition: transform 0.15s;
+  position: relative;
+  overflow: hidden; /* crop the flag watermark pseudo-element */
 }
 
 .ranking-row:hover { transform: translate(-1px,-1px); }
 
 .ranking-row.me {
   border-color: #fff;
-  background-color: #1a1a3e;
 }
 
 .ranking-row.pos-1 { border-color: #2a2a5a; }
 .ranking-row.pos-2 { border-color: #2a2a5a; }
 .ranking-row.pos-3 { border-color: #2a2a5a; }
+
+/* Flag watermark pseudo-element - covers exactly 65% width, 100% height, cover size (no stretching) */
+.ranking-row[style*="--row-flag"]::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 65%; /* Exactly 65% width horizontally */
+  background-image: linear-gradient(to right, rgba(18, 18, 46, 1) 0%, rgba(18, 18, 46, 0.15) 100%), var(--row-flag);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Ensure ranking row child elements sit on top of the watermark */
+.rank-pos,
+.rank-detail,
+.ranking-row > div {
+  position: relative;
+  z-index: 2;
+}
 
 .rank-detail {
   flex: 1;

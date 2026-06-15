@@ -13,9 +13,50 @@ async function apiFetch(endpoint) {
   if (_cache[endpoint] && now - _cache[endpoint].ts < CACHE_TTL) {
     return _cache[endpoint].data;
   }
-  const res = await fetch(`${API_BASE}${endpoint}`);
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  const data = await res.json();
+
+  const url = `${API_BASE}${endpoint}`;
+  let data;
+
+  // Helper function to fetch with a timeout
+  async function fetchWithTimeout(fetchUrl, options = {}, timeoutMs = 3500) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(fetchUrl, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(id);
+      return response;
+    } catch (err) {
+      clearTimeout(id);
+      throw err;
+    }
+  }
+
+  try {
+    // 1. Try direct fetch first (with 3.5 seconds timeout)
+    const res = await fetchWithTimeout(url, {}, 3500);
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    data = await res.json();
+  } catch (err) {
+    console.warn(`Direct fetch failed or timed out for ${url}, trying via CORS proxy...`, err);
+    try {
+      // 2. Try primary CORS proxy (corsproxy.io)
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+      const res = await fetch(proxyUrl);
+      if (!res.ok) throw new Error(`CORS proxy API error: ${res.status}`);
+      data = await res.json();
+    } catch (proxyErr) {
+      console.warn(`Primary CORS proxy failed, trying backup proxy...`, proxyErr);
+      // 3. Try backup CORS proxy (allorigins.win)
+      const backupUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      const res = await fetch(backupUrl);
+      if (!res.ok) throw new Error(`Backup CORS proxy API error: ${res.status}`);
+      data = await res.json();
+    }
+  }
+
   _cache[endpoint] = { data, ts: now };
   return data;
 }
