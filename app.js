@@ -655,7 +655,51 @@ function renderGuessesForPhase(phase) {
       <span class="phase-locked">🔒 ${locked} fechados / pendentes</span>
     </div>`;
 
-  container.innerHTML = summary + games.map(game => renderGuessRow(game)).join('');
+  const finishedGames = games.filter(g => isMatchFinished(g));
+  const todayGames    = games.filter(g => !isMatchFinished(g) && isMatchToday(g));
+  const futureGames   = games.filter(g => !isMatchFinished(g) && !isMatchToday(g));
+
+  let html = summary;
+
+  if (todayGames.length > 0) {
+    html += `
+      <div class="today-guesses-section">
+        <div class="today-section-header pixel-font">
+          <span class="star-blink">★</span> JOGOS DE HOJE — EM DESTAQUE <span class="star-blink">★</span>
+        </div>
+        <div class="today-guesses-content">
+          ${todayGames.map(game => renderGuessRow(game, true)).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (futureGames.length > 0) {
+    html += `
+      <div class="future-guesses-section">
+        ${todayGames.length > 0 ? '<div class="future-section-header pixel-font">PRÓXIMOS CONFRONTOS</div>' : ''}
+        <div class="future-guesses-content">
+          ${futureGames.map(game => renderGuessRow(game, false)).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (finishedGames.length > 0) {
+    html += `
+      <details class="finished-guesses-details">
+        <summary class="finished-guesses-summary pixel-font">
+          <span>▼ JOGOS FINALIZADOS / RESULTADOS (${finishedGames.length})</span>
+          <span style="font-size:0.5rem; color:var(--text-dim)">[CLIQUE PARA ABRIR/RECOLHER]</span>
+        </summary>
+        <div class="finished-guesses-content">
+          ${finishedGames.map(game => renderGuessRow(game, false)).join('')}
+        </div>
+      </details>
+    `;
+  }
+
+  container.innerHTML = html;
 
   // Bind input events
   container.querySelectorAll('.guess-score-input').forEach(input => {
@@ -709,7 +753,7 @@ function renderGuessesForPhase(phase) {
   });
 }
 
-function renderGuessRow(game) {
+function renderGuessRow(game, isToday = false) {
   const matchId  = parseInt(game.id);
   const guess    = state.myGuesses[matchId];
   const locked   = hasMatchStarted(game);
@@ -728,6 +772,7 @@ function renderGuessRow(game) {
   let pointsInfo  = '';
   let rowExtra    = '';
   let rowClass    = 'guess-row';
+  if (isToday) rowClass += ' today-highlight';
 
   if (finished) {
     const realH = game.home_score;
@@ -930,9 +975,11 @@ function renderRanking() {
     const isMe = u.id === state.currentUser?.id;
     const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
     const posClass = i < 3 ? `pos-${i + 1}` : '';
+    const code = u.champion ? TEAM_CODES[u.champion] : null;
+    const rowStyle = code ? `style="--row-flag: url('https://flagcdn.com/w160/${code}.png')"` : '';
 
     return `
-      <div class="ranking-row ${posClass} ${isMe ? 'me' : ''}">
+      <div class="ranking-row ${posClass} ${isMe ? 'me' : ''}" ${rowStyle}>
         <span class="rank-pos ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}">${medal}</span>
         <div class="rank-detail">
           <div class="rank-detail-nick">${escapeHtml(u.nickname)}${isMe ? ' <span style="color:var(--accent-gold)">← você</span>' : ''}</div>
@@ -942,7 +989,7 @@ function renderRanking() {
             <span class="stat-wrong">❌ ${u.wrong} errados</span>
             <span style="color:var(--text-muted)">⏳ ${u.pending} pendentes</span>
           </div>
-          ${u.champion ? `<div style="font-size:0.65rem;color:var(--text-dim);margin-top:0.3rem">🏆 ${teamFlag(u.champion)} ${TEAM_NAME_PT[u.champion] || u.champion}</div>` : ''}
+          ${u.champion ? `<div style="font-family:var(--font-pixel);font-size:0.48rem;color:var(--text-dim);margin-top:0.35rem;letter-spacing:1px">🏆 CAMPEÃO: ${TEAM_NAME_PT[u.champion] || u.champion}</div>` : ''}
         </div>
         <div style="text-align:right">
           <span class="rank-score-big">${u.total}</span>
