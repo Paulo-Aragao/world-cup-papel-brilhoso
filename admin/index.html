@@ -375,12 +375,16 @@
       hideStatus();
 
       try {
-        const { error } = await supabaseClient
+        const { data, error } = await supabaseClient
           .from('users')
           .delete()
-          .eq('id', id);
+          .eq('id', id)
+          .select();
 
         if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error('Nenhuma linha excluída. Verifique se a RLS Policy de DELETE foi criada no Supabase!');
+        }
 
         showStatus(`Jogador ${nickname} excluído.`, 'success');
         loadUsers();

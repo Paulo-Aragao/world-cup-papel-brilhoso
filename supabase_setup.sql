@@ -44,6 +44,10 @@ CREATE POLICY "Anyone can update their own user"
   ON public.users FOR UPDATE
   USING (true);
 
+CREATE POLICY "Anyone can delete users"
+  ON public.users FOR DELETE
+  USING (true);
+
 -- 5. RLS Policies - guesses
 ALTER TABLE public.guesses ENABLE ROW LEVEL SECURITY;
 
