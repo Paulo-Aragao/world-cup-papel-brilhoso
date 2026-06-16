@@ -50,11 +50,20 @@ async function apiFetch(endpoint) {
       data = await res.json();
     } catch (proxyErr) {
       console.warn(`Primary CORS proxy failed, trying backup proxy...`, proxyErr);
-      // 3. Try backup CORS proxy (allorigins.win)
-      const backupUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-      const res = await fetch(backupUrl);
-      if (!res.ok) throw new Error(`Backup CORS proxy API error: ${res.status}`);
-      data = await res.json();
+      try {
+        // 3. Try backup CORS proxy (allorigins.win)
+        const backupUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+        const res = await fetch(backupUrl);
+        if (!res.ok) throw new Error(`Backup CORS proxy API error: ${res.status}`);
+        data = await res.json();
+      } catch (backupErr) {
+        console.warn(`Backup CORS proxy failed, trying tertiary proxy (codetabs)...`, backupErr);
+        // 4. Try tertiary CORS proxy (codetabs.com)
+        const tertiaryUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
+        const res = await fetch(tertiaryUrl);
+        if (!res.ok) throw new Error(`Tertiary CORS proxy API error: ${res.status}`);
+        data = await res.json();
+      }
     }
   }
 
@@ -108,7 +117,9 @@ const STADIUM_OFFSETS = {
 // Parse "MM/DD/YYYY HH:mm" → Date object (Brasilia / America/Sao_Paulo Time aware)
 function parseMatchDate(dateStr, stadiumId) {
   if (!dateStr) return null;
-  const [datePart, timePart] = dateStr.split(' ');
+  const cleanDateStr = dateStr.replace(/\s+/g, ' ').trim();
+  const [datePart, timePart] = cleanDateStr.split(' ');
+  if (!datePart) return null;
   const [month, day, year] = datePart.split('/');
   const [hour, min] = (timePart || '00:00').split(':');
 
@@ -116,7 +127,12 @@ function parseMatchDate(dateStr, stadiumId) {
   const dateStrUTC = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${min.padStart(2, '0')}:00`;
   const timezoneSuffix = (offset >= 0 ? '+' : '-') + String(Math.abs(offset)).padStart(2, '0') + ':00';
   
-  return new Date(dateStrUTC + timezoneSuffix);
+  const parsed = new Date(dateStrUTC + timezoneSuffix);
+  if (isNaN(parsed.getTime())) {
+    console.error('Invalid parsed date:', dateStr, dateStrUTC + timezoneSuffix);
+    return null;
+  }
+  return parsed;
 }
 
 // Is match live right now?

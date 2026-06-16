@@ -387,17 +387,22 @@ async function navigateTo(page) {
 async function renderPage(page) {
   switch (page) {
     case 'ranking':
-      await loadAllGuesses();
+      showLoading(true);
+      await Promise.all([loadAllGuesses(), loadUsers(), loadGames()]);
       recomputeRanking();
       updateNavScore();
       renderRanking();
+      showLoading(false);
       break;
     case 'palpites':
       renderPalpites();
       break;
     case 'jogos':
+      showLoading(true);
+      await loadGames();
       renderJogos();
       bindManualRefreshBtn();
+      showLoading(false);
       break;
     case 'resultados':
       showLoading(true);
@@ -1709,9 +1714,8 @@ function escapeHtml(str) {
 }
 
 function formatScoreValue(score, game) {
-  if (score === null || score === undefined || score === '') {
-    const active = isMatchLive(game) || isMatchFinished(game);
-    return active ? '0' : '-';
+  if (score === null || score === undefined || score === '' || score === 'null') {
+    return '0';
   }
   return score;
 }
